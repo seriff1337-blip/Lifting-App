@@ -265,6 +265,20 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
   padding:11px 12px; font-size:14px; color:var(--ink); outline:none}
 .srcrow input:focus{border-color:var(--acc)}
 .impbody .go.ghost{margin-top:8px; background:none; border-color:var(--line); color:var(--ink-3)}
+details.adv{margin:0 0 10px}
+details.adv summary{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); cursor:pointer; list-style:none; padding:2px 0}
+details.adv summary::-webkit-details-marker{display:none}
+details.adv summary::before{content:"+ "; color:var(--acc)}
+details.adv[open] summary::before{content:"\2013 "}
+details.adv p{font-size:13px; color:var(--ink-3); margin:6px 0 8px}
+.chkline{display:flex; align-items:flex-start; gap:9px; font-size:13.5px;
+  color:var(--ink-2); line-height:1.35; margin:2px 0 4px; cursor:pointer}
+.chkline input{width:18px; height:18px; flex:none; margin:1px 0 0; accent-color:var(--acc)}
+.pushstat{font-size:13.5px; line-height:1.45; margin:2px 0 14px; color:var(--ink-3); word-break:break-word}
+.pushstat.ok{color:var(--ok); font-weight:600}
+.pushstat.bad{color:var(--acc); font-weight:600}
+.done .go.alt{background:none; border-color:var(--acc); color:var(--acc)}
 .fbtn:disabled{opacity:.5}
 .hidefile{position:fixed; left:-9999px; top:0; width:1px; height:1px; opacity:0}
 .fstat{font-size:13.5px; color:var(--ink-3); margin:10px 0 0; text-align:center; word-break:break-word}
@@ -669,7 +683,16 @@ let saveTimer = null;
    never evicted by the quota fallback in saveLocal(). Per device on purpose:
    never bake a sheet id into the build, or everyone shares one log. */
 const SKEY = 'sbs-src-v1';
-function loadSrc() { try { return JSON.parse(localStorage.getItem(SKEY) || '{}') || {}; } catch (e) { return {}; } }
+/* The relay is a public pass-through, not a secret, so it ships with the app.
+   Only the sheet id stays per device. Override it in the panel if you run
+   your own. */
+const DEFAULT_RELAY = 'https://sbs-relay.seriff1337.workers.dev/';
+function loadSrc() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem(SKEY) || '{}') || {}; } catch (e) { o = {}; }
+  if (!o.relay) o.relay = DEFAULT_RELAY;
+  return o;
+}
 function saveSrc(o) { try { localStorage.setItem(SKEY, JSON.stringify(o)); } catch (e) {} }
 function sheetIdFrom(v) {
   const t = String(v || '').trim();
@@ -987,11 +1010,33 @@ function renderDone() {
     go.addEventListener('click', doExport);
     p.appendChild(go);
   }
+  const src = loadSrc();
+  if (src.writer && src.token) {
+    const ps = document.createElement('p'); ps.className = 'pushstat'; ps.id = 'pushstat';
+    ps.textContent = log[pushedKey(w.id, pos.d)] ? 'Already in Rok’s sheet.' : '';
+    p.appendChild(ps);
+
+    const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'go alt'; pb.id = 'pushbtn';
+    pb.textContent = '⇧  Fill Day ' + pos.d + ' into Rok’s sheet';
+    pb.addEventListener('click', function () {
+      pb.disabled = true; pb.textContent = 'Filling…';
+      pushDay(w.id, pos.d, false);
+    });
+    p.appendChild(pb);
+  }
+
   const back = document.createElement('button'); back.type = 'button'; back.className = 'back';
   back.textContent = '← Back to Day ' + pos.d;
   back.addEventListener('click', function () { view = 'session'; renderAll(); scrollTo(0, 0); });
   p.appendChild(back);
   host.appendChild(p);
+
+  /* The day is finished and on screen: send it up, unless the exact same
+     numbers already went. Deliberately after the render, so the status
+     line exists to write into. */
+  if (src.writer && src.token && src.auto !== false && dayComplete(pos.d)) {
+    setTimeout(function () { pushDay(w.id, pos.d, true); }, 60);
+  }
 }
 
 function renderRail() {
@@ -1119,7 +1164,7 @@ function renderCheckin() {
 function renderFiles() {
   const host = $('filebar'); host.innerHTML = '';
   const src = loadSrc();
-  const wired = !!(src.relay && src.id);
+  const wired = !!src.id;
   const box = document.createElement('div'); box.className = 'filebox';
 
   if (wired) {
@@ -1175,8 +1220,9 @@ function renderFiles() {
   const bd = document.createElement('div'); bd.className = 'impbody';
 
   const p1 = document.createElement('p');
-  p1.textContent = 'Paste the Google Sheets link Rok shared with you, plus the address of your relay. ' +
-    'The sheet must be set to "Anyone with the link \u2192 Viewer". Both are stored on this phone only.';
+  p1.textContent = 'Paste the Google Sheets link Rok shared with you. The sheet must be set to ' +
+    '"Anyone with the link \u2192 Viewer". It is stored on this phone only \u2014 nobody else using ' +
+    'this app sees your sheet.';
   bd.appendChild(p1);
 
   function fieldRow(labelText, val, ph) {
@@ -1188,15 +1234,62 @@ function renderFiles() {
     return i;
   }
   const iSheet = fieldRow('Google Sheets link', src.url || src.id || '', 'https://docs.google.com/spreadsheets/d/\u2026');
-  const iRelay = fieldRow('Relay address', src.relay || '', 'https://\u2026.workers.dev');
+
+  const adv = document.createElement('details'); adv.className = 'adv';
+  const asum = document.createElement('summary'); asum.textContent = 'Relay address';
+  adv.appendChild(asum);
+  const abody = document.createElement('div');
+  const ap = document.createElement('p');
+  ap.textContent = 'Already set up \u2014 leave this alone unless you are running your own relay. ' +
+    'Clear the box to go back to the built-in one.';
+  abody.appendChild(ap);
+  adv.appendChild(abody);
+  bd.appendChild(adv);
+  const iRelay = fieldRow('Address', src.relay === DEFAULT_RELAY ? '' : (src.relay || ''), DEFAULT_RELAY);
+  abody.appendChild(iRelay.parentNode);
+
+  const w2 = document.createElement('details'); w2.className = 'adv';
+  const wsum = document.createElement('summary');
+  wsum.textContent = (src.writer && src.token) ? 'Auto-fill the sheet — on' : 'Auto-fill the sheet — off';
+  w2.appendChild(wsum);
+  const wbody = document.createElement('div');
+  const wp = document.createElement('p');
+  wp.textContent = 'Optional. With this set up, finishing a day writes your reps, weights, RPE and ' +
+    'comments straight into Rok’s sheet — no export, no file to send. Needs the small Apps Script ' +
+    'from relay/sheet-writer.gs deployed by someone with edit rights on the sheet.';
+  wbody.appendChild(wp);
+  w2.appendChild(wbody);
+  bd.appendChild(w2);
+  const iWrite = fieldRow('Writer address (…/exec)', src.writer || '', 'https://script.google.com/macros/s/…/exec');
+  const iTok = fieldRow('Shared token', src.token || '', 'the same string you put in the script');
+  iTok.type = 'text';
+  wbody.appendChild(iWrite.parentNode); wbody.appendChild(iTok.parentNode);
+
+  const autoRow = document.createElement('label'); autoRow.className = 'chkline';
+  const autoBox = document.createElement('input'); autoBox.type = 'checkbox';
+  autoBox.checked = src.auto !== false;
+  const autoTxt = document.createElement('span');
+  autoTxt.textContent = 'Fill the sheet automatically when I finish a day';
+  autoRow.appendChild(autoBox); autoRow.appendChild(autoTxt);
+  wbody.appendChild(autoRow);
 
   const go = document.createElement('button'); go.type = 'button'; go.className = 'go';
   go.textContent = 'Save and fetch now';
   go.addEventListener('click', async function () {
-    const id = sheetIdFrom(iSheet.value), relay = relayFrom(iRelay.value);
+    const id = sheetIdFrom(iSheet.value);
+    const typed = iRelay.value.trim();
+    const relay = typed ? relayFrom(typed) : DEFAULT_RELAY;
     if (!id) { stat('That does not look like a Google Sheets link \u2014 it should contain /spreadsheets/d/\u2026', true); return; }
-    if (!relay) { stat('The relay address must start with https:// \u2014 copy it from your Cloudflare worker page.', true); return; }
-    saveSrc({ id: id, relay: relay, url: iSheet.value.trim(), label: src.label || 'Rok\u2019s sheet' });
+    if (!relay) { stat('A custom relay address must start with https:// \u2014 or clear the box to use the built-in one.', true); return; }
+    const writer = iWrite.value.trim(), token = iTok.value.trim();
+    if (writer && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(writer)) {
+      stat('The writer address should be the Apps Script /exec link — it looks like https://script.google.com/macros/s/…/exec', true); return;
+    }
+    if (writer && !token) { stat('The writer needs the same token you put in the script.', true); return; }
+    saveSrc({
+      id: id, relay: relay, url: iSheet.value.trim(), label: src.label || 'Rok\u2019s sheet',
+      writer: writer || '', token: token || '', auto: !!autoBox.checked
+    });
     d.open = false; renderFiles();
     await doFetchSheet();
   });
@@ -1212,6 +1305,7 @@ function renderFiles() {
     bd.appendChild(cut);
   }
 
+  if (!weeks.length && !wired) d.open = true;
   d.appendChild(bd); host.appendChild(d);
 }
 
@@ -1284,13 +1378,21 @@ async function doImport(file) {
 /* ---- pull the workbook straight from Rok's Google Sheet, via the relay ---- */
 async function doFetchSheet() {
   const src = loadSrc();
-  if (!src.relay || !src.id) { stat('Connect Rok\u2019s sheet first \u2014 open "Rok\u2019s sheet" just below.', true); return; }
+  if (!src.id) { stat('Paste Rok\u2019s sheet link first \u2014 open "Connect Rok\u2019s sheet" just below.', true); return; }
   const btn = $('refbtn'), was = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Fetching\u2026'; }
   stat('Fetching the latest from Rok\u2019s sheet\u2026');
   try {
-    const u = src.relay + (src.relay.indexOf('?') > -1 ? '&' : '?') +
-      'id=' + encodeURIComponent(src.id) + '&t=' + Date.now();
+    let u;
+    try {
+      const uu = new URL(src.relay);
+      uu.searchParams.set('id', src.id);
+      uu.searchParams.set('t', String(Date.now()));
+      u = uu.toString();
+    } catch (e) {
+      u = src.relay + (src.relay.indexOf('?') > -1 ? '&' : '?') +
+        'id=' + encodeURIComponent(src.id) + '&t=' + Date.now();
+    }
     const r = await fetch(u, { cache: 'no-store' });
     if (!r.ok) {
       let extra = '';
@@ -1314,11 +1416,12 @@ async function doFetchSheet() {
   }
 }
 
-function buildEdits() {
+function buildEdits(scope) {
   const byTab = {};
 
   /* daily check-in rows: weight / sleep / kcal, one column per calendar day */
   weeks.forEach(function (w) {
+    if (scope && w.id !== scope.wid) return;
     if (!w.chk || !w.chk.m.length) return;
     const list = byTab[w.tab] = byTab[w.tab] || [];
     w.chk.days.forEach(function (d, k) {
@@ -1340,6 +1443,7 @@ function buildEdits() {
     const parts = k.split('|');
     const wid = parts.slice(0, parts.length - 2).join('|');
     const dn = parseInt(parts[parts.length - 2], 10), ri = parseInt(parts[parts.length - 1], 10);
+    if (scope && (wid !== scope.wid || dn !== scope.dn)) return;
     const w = weeks.find(function (x) { return x.id === wid; }); if (!w) return;
     const d = w.days.find(function (x) { return x.n === dn; }); if (!d) return;
     const r = d.rows[ri]; if (!r || !num(r.sr) || !num(r.sc)) return;
@@ -1356,6 +1460,94 @@ function buildEdits() {
     }
   });
   return byTab;
+}
+
+/* ---- push a finished day straight into Rok's Google Sheet ----
+   The relay only reads; Google has no anonymous write. Writing goes through a
+   small Apps Script web app that runs as whoever deployed it, so it carries
+   that person's edit rights on the sheet. */
+let pushing = false;
+function pushedKey(wid, dn) { return wid + '|PUSHED|' + dn; }
+
+async function pushDay(wid, dn, auto) {
+  const src = loadSrc();
+  if (!src.writer || !src.token) {
+    if (!auto) stat('Set up the sheet writer first \u2014 open "Connect Rok\u2019s sheet" below.', true);
+    return { ok: false, skipped: true };
+  }
+  const edits = flatEdits(buildEdits({ wid: wid, dn: dn }));
+  if (!edits.length) {
+    if (!auto) stat('Nothing logged for that day yet.', true);
+    return { ok: false, skipped: true };
+  }
+  const fp = fingerprint(edits);
+  if (auto && log[pushedKey(wid, dn)] === fp) return { ok: true, skipped: true };
+  if (pushing) return { ok: false, skipped: true };
+
+  pushing = true;
+  pushStat('Filling Day ' + dn + ' into Rok\u2019s sheet\u2026');
+  const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctl ? setTimeout(function () { ctl.abort(); }, 45000) : null;
+  try {
+    const res = await fetch(src.writer, {
+      method: 'POST',
+      /* text/plain keeps this a "simple" request. Apps Script web apps cannot
+         answer a CORS preflight, so anything that triggers one just fails. */
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ token: src.token, sheetId: src.id, edits: edits }),
+      redirect: 'follow',
+      signal: ctl ? ctl.signal : undefined
+    });
+    const txt = await res.text();
+    let data = null;
+    try { data = JSON.parse(txt); } catch (e) {}
+    if (!res.ok) throw new Error('the writer answered ' + res.status + '.');
+    if (!data) throw new Error('the writer did not return JSON. Check that it is deployed with access set to "Anyone".');
+    if (!data.ok) throw new Error(data.error || 'the writer refused the write.');
+
+    log[pushedKey(wid, dn)] = fp;
+    save();
+    pushStat('Day ' + dn + ' is in Rok\u2019s sheet \u2014 ' + data.written + ' cell' +
+      (data.written === 1 ? '' : 's') + ' filled' +
+      (data.skipped ? ', ' + data.skipped + ' skipped (formulas left alone)' : '') + '.', 'ok');
+    return { ok: true, written: data.written };
+  } catch (err) {
+    const off = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    let why = String((err && err.message) || err);
+    if (/abort/i.test(why)) why = 'it took too long to answer.';
+    else if (/failed to fetch|networkerror|load failed/i.test(why)) {
+      why = 'the writer could not be reached. Check the /exec address, and that it is deployed to "Anyone".';
+    }
+    pushStat(off
+      ? 'Offline \u2014 Day ' + dn + ' was not sent. It will go up next time you tap Fill.'
+      : 'Could not fill the sheet: ' + why + ' Nothing on your phone was lost \u2014 tap Fill to retry.', 'bad');
+    return { ok: false, error: why };
+  } finally {
+    if (timer) clearTimeout(timer);
+    pushing = false;
+    const bt = $('pushbtn'); if (bt) { bt.disabled = false; bt.textContent = '\u21e7  Fill Day ' + dn + ' into Rok\u2019s sheet'; }
+  }
+}
+
+function pushStat(msg, kind) {
+  const el = $('pushstat');
+  if (el) { el.textContent = msg; el.className = 'pushstat' + (kind ? ' ' + kind : ''); }
+  else stat(msg, kind === 'bad');
+}
+
+function flatEdits(byTab) {
+  const out = [];
+  Object.keys(byTab).forEach(function (tab) {
+    byTab[tab].forEach(function (e) { out.push({ tab: tab, r: e.r, c: e.c, v: e.v }); });
+  });
+  out.sort(function (x, y) { return x.tab.localeCompare(y.tab) || x.r - y.r || x.c - y.c; });
+  return out;
+}
+function fingerprint(list) {
+  const str = JSON.stringify(list);
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return String(h) + '.' + str.length;
 }
 
 async function doExport() {

@@ -1,6 +1,6 @@
 /* Set by Set — offline cache.
    Bump CACHE when you change any file; old caches are dropped on activate. */
-const CACHE = 'setbyset-v4';
+const CACHE = 'setbyset-v6';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -17,6 +17,9 @@ self.addEventListener('activate', function (e) {
 self.addEventListener('fetch', function (e) {
   const req = e.request;
   if (req.method !== 'GET') return;
+  /* Leave cross-origin traffic alone: the Google Sheets relay must reach the
+     network every time, and its CORS response is not ours to cache. */
+  if (new URL(req.url).origin !== self.location.origin) return;
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).then(function (r) {
       const copy = r.clone();
