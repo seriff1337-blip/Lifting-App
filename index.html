@@ -1,0 +1,1003 @@
+<title>Set by Set</title>
+<meta name="theme-color" content="#0E141B">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Set by Set">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chivo:wght@600;700;900&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#EEF1F5; --surface:#FFFFFF; --surface-2:#E3E8EE; --sunk:#DCE2E9;
+  --ink:#101720; --ink-2:#41505F; --ink-3:#6B7A8A;
+  --line:#CBD4DD; --line-soft:#DFE5EB;
+  --acc:#C2410C; --acc-ink:#FFFFFF; --acc-soft:rgba(194,65,12,.10);
+  --ok:#15803D; --ok-soft:rgba(21,128,61,.12);
+  --disp:'Chivo','Helvetica Neue',Arial,sans-serif;
+  --ui:'Public Sans','Segoe UI',system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E141B; --surface:#18212B; --surface-2:#202B37; --sunk:#111A22;
+    --ink:#E9EFF5; --ink-2:#A7B6C4; --ink-3:#74838F;
+    --line:#2C3945; --line-soft:#232F3A;
+    --acc:#FF7A1A; --acc-ink:#160A02; --acc-soft:rgba(255,122,26,.15);
+    --ok:#3DD68C; --ok-soft:rgba(61,214,140,.15);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E141B; --surface:#18212B; --surface-2:#202B37; --sunk:#111A22;
+  --ink:#E9EFF5; --ink-2:#A7B6C4; --ink-3:#74838F;
+  --line:#2C3945; --line-soft:#232F3A;
+  --acc:#FF7A1A; --acc-ink:#160A02; --acc-soft:rgba(255,122,26,.15);
+  --ok:#3DD68C; --ok-soft:rgba(61,214,140,.15);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:var(--ui); font-size:16px; line-height:1.45;
+  margin:0; padding:0 16px; padding-block:0 40px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:560px; margin:0 auto; min-width:0}
+html,body{overflow-x:hidden}
+button{font:inherit; color:inherit; cursor:pointer}
+
+/* ---------- top bar ---------- */
+.bar{
+  position:sticky; top:0; z-index:20; background:var(--ground);
+  padding-block:14px 10px; border-bottom:1px solid var(--line-soft);
+}
+.bar-top{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; min-width:0}
+.bar-top>*{min-width:0}
+.brand{font-family:var(--disp); font-weight:900; font-size:15px; letter-spacing:.14em; text-transform:uppercase}
+.brand span{color:var(--acc)}
+.wk{
+  font-family:var(--ui); font-size:13px; font-weight:600; color:var(--ink-2);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+  padding:5px 9px; max-width:170px; min-width:0; flex:0 1 auto;
+  text-overflow:ellipsis; overflow:hidden;
+}
+.days{display:grid; grid-template-columns:repeat(auto-fit,minmax(68px,1fr)); gap:6px}
+.day{
+  border:1px solid var(--line); background:var(--surface); border-radius:10px;
+  padding:9px 4px 7px; text-align:center; line-height:1.15;
+}
+.day b{display:block; font-family:var(--disp); font-weight:700; font-size:15px}
+.day i{display:block; font-style:normal; font-size:11px; color:var(--ink-3); margin-top:2px; font-variant-numeric:tabular-nums}
+.day[aria-selected="true"]{background:var(--acc); border-color:var(--acc); color:var(--acc-ink)}
+.day[aria-selected="true"] i{color:var(--acc-ink); opacity:.8}
+
+/* ---------- card ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:16px;
+  padding:18px 18px 16px; margin-top:16px;
+}
+.tags{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px}
+.tag{
+  font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); background:var(--surface-2); border-radius:100px; padding:4px 9px;
+}
+.tag.main{background:var(--acc-soft); color:var(--acc)}
+.exname{
+  font-family:var(--disp); font-weight:900; font-size:clamp(24px,6.4vw,31px);
+  line-height:1.06; letter-spacing:-.02em; margin:0 0 12px; text-wrap:balance;
+}
+.rx{
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  background:var(--sunk); border-radius:10px; padding:10px 12px; margin-bottom:6px;
+}
+.rx .lbl{font-size:11px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3)}
+.rx .v{font-family:var(--disp); font-weight:700; font-size:17px; font-variant-numeric:tabular-nums}
+.lastwk{font-size:13px; color:var(--ink-3); margin:0 0 14px; padding-left:2px}
+.lastwk b{color:var(--ink-2); font-weight:600; font-variant-numeric:tabular-nums}
+
+/* ---------- fields ---------- */
+.fields{display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px}
+.f{background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:8px 10px 10px}
+.f.changed{border-color:var(--acc); background:var(--acc-soft)}
+.f label{display:block; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:4px}
+.frow{display:flex; align-items:center; gap:6px}
+.frow input{
+  flex:1; min-width:0; width:100%; background:transparent; border:none; outline:none;
+  font-family:var(--disp); font-weight:700; font-size:26px; color:var(--ink);
+  text-align:center; padding:2px 0; font-variant-numeric:tabular-nums;
+}
+.stp{
+  width:34px; height:34px; flex:none; border-radius:9px; border:1px solid var(--line);
+  background:var(--surface); font-family:var(--disp); font-weight:700; font-size:19px;
+  display:flex; align-items:center; justify-content:center; padding:0;
+}
+.stp:active{background:var(--acc); border-color:var(--acc); color:var(--acc-ink)}
+
+/* ---------- set ticks ---------- */
+.setrow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.setrow .lbl{font-size:11px; font-weight:700; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3)}
+.ticks{display:flex; gap:8px; flex-wrap:wrap}
+.tick{
+  width:42px; height:42px; border-radius:12px; border:2px solid var(--line);
+  background:var(--surface-2); font-family:var(--disp); font-weight:700; font-size:15px;
+  color:var(--ink-3); padding:0;
+}
+.tick[aria-pressed="true"]{background:var(--ok); border-color:var(--ok); color:var(--acc-ink)}
+:root[data-theme="dark"] .tick[aria-pressed="true"]{color:#04170D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tick[aria-pressed="true"]{color:#04170D}}
+
+.note{width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:12px;
+  padding:10px 12px; font:inherit; font-size:15px; color:var(--ink); resize:vertical; min-height:44px; outline:none}
+.note:focus{border-color:var(--acc)}
+.vid{display:inline-block; margin:10px 0 0; font-size:14px; font-weight:600; color:var(--acc)}
+
+.nav{display:grid; grid-template-columns:64px 1fr; gap:10px; margin-top:16px}
+.nav button{
+  border-radius:12px; border:1px solid var(--line); background:var(--surface-2);
+  font-family:var(--disp); font-weight:700; font-size:16px; padding:15px 10px;
+}
+.nav .next{background:var(--acc); border-color:var(--acc); color:var(--acc-ink); font-size:17px}
+.nav button:disabled{opacity:.4}
+
+/* ---------- rail ---------- */
+.rail{margin-top:24px}
+.rail h2{
+  font-family:var(--disp); font-weight:700; font-size:12px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--ink-3); margin:0 0 8px;
+}
+.rl{
+  display:grid; grid-template-columns:26px minmax(0,1fr) 22px; gap:10px; align-items:center;
+  width:100%; text-align:left; background:none; border:none; padding:9px 8px;
+  border-radius:10px; border-bottom:1px solid var(--line-soft);
+}
+.rl:last-child{border-bottom:none}
+.rl[aria-current="true"]{background:var(--acc-soft)}
+.rl .i{font-family:var(--disp); font-weight:700; font-size:12px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.rl[aria-current="true"] .i{color:var(--acc)}
+.rl .t{min-width:0}
+.rl .t b{display:block; font-size:14.5px; font-weight:600; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.rl .t i{font-style:normal; font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.rl .st{width:20px; height:20px; min-width:20px; max-width:20px; min-height:20px; max-height:20px;
+  border-radius:50%; border:2px solid var(--line); box-sizing:border-box; justify-self:center; align-self:center; padding:0}
+.rl .st.done{background:var(--ok); border-color:var(--ok)}
+.rl .st.part{border-color:var(--acc); background:linear-gradient(90deg,var(--acc) 50%,transparent 50%)}
+.secbreak{
+  font-family:var(--disp); font-weight:700; font-size:11px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--ink-3); padding:14px 8px 4px; border-top:1px solid var(--line-soft);
+}
+.secbreak:first-child{border-top:none; padding-top:4px}
+
+/* ---------- done panel ---------- */
+.done{
+  background:var(--surface); border:1px solid var(--ok); border-radius:16px;
+  padding:26px 20px 22px; margin-top:16px; text-align:center;
+}
+.done .kick{font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--ok)}
+.done h1{
+  font-family:var(--disp); font-weight:900; font-size:clamp(28px,8vw,38px); line-height:1.02;
+  letter-spacing:-.025em; margin:8px 0 4px;
+}
+.done .sub{font-size:15px; color:var(--ink-2); margin:0 0 18px}
+.stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:18px}
+.stat{background:var(--surface-2); border-radius:12px; padding:12px 6px}
+.stat b{display:block; font-family:var(--disp); font-weight:900; font-size:21px; font-variant-numeric:tabular-nums; line-height:1.1}
+.stat i{display:block; font-style:normal; font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-top:4px}
+.done .go{
+  width:100%; padding:16px; border-radius:12px; border:1px solid var(--acc); background:var(--acc);
+  color:var(--acc-ink); font-family:var(--disp); font-weight:700; font-size:17px; margin-bottom:10px;
+}
+.done .go.fin{background:var(--ok); border-color:var(--ok)}
+:root[data-theme="dark"] .done .go.fin{color:#04170D}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .done .go.fin{color:#04170D}}
+.done .back{background:none; border:none; color:var(--ink-3); font-size:14px; font-weight:600; padding:6px}
+.trophy{font-size:40px; line-height:1; margin-bottom:6px}
+
+/* ---------- export ---------- */
+.blk{background:var(--sunk); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px}
+.blk .hd{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+.blk .cell{font-family:var(--disp); font-weight:700; font-size:14px}
+.blk .cell em{font-style:normal; color:var(--acc)}
+.blk .cp{
+  border:1px solid var(--line); background:var(--surface); border-radius:8px;
+  padding:6px 12px; font-size:13px; font-weight:700; flex:none;
+}
+.blk .cp.ok{background:var(--ok); border-color:var(--ok); color:#fff}
+.blk pre{
+  margin:0; font-family:ui-monospace,monospace; font-size:12.5px; line-height:1.5;
+  white-space:pre; overflow-x:auto; color:var(--ink); font-variant-numeric:tabular-nums;
+}
+.warn{font-size:13.5px; color:var(--ink-2); background:var(--acc-soft); border-radius:10px; padding:10px 12px; margin:0 0 12px}
+
+/* ---------- import ---------- */
+details.imp{margin-top:26px; border:1px solid var(--line); border-radius:12px; background:var(--surface)}
+details.imp summary{padding:13px 16px; font-weight:600; font-size:15px; cursor:pointer; list-style:none}
+details.imp summary::-webkit-details-marker{display:none}
+details.imp summary::before{content:"+ "; color:var(--acc); font-weight:700}
+details.imp[open] summary::before{content:"– "}
+.impbody{padding:0 16px 16px}
+.impbody p{font-size:14px; color:var(--ink-2); margin:0 0 10px}
+.impbody textarea{width:100%; min-height:120px; font-family:ui-monospace,monospace; font-size:12px;
+  background:var(--sunk); border:1px solid var(--line); border-radius:10px; padding:10px; color:var(--ink); outline:none}
+.impbody .go{margin-top:10px; width:100%; padding:13px; border-radius:10px; border:1px solid var(--acc);
+  background:var(--acc); color:var(--acc-ink); font-family:var(--disp); font-weight:700; font-size:15px}
+.msg{font-size:14px; margin-top:10px; font-weight:600}
+.msg.ok{color:var(--ok)} .msg.bad{color:var(--acc)}
+
+.foot{margin-top:22px; font-size:12.5px; color:var(--ink-3); line-height:1.55; text-align:center}
+.sync{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.sync.on{color:var(--ok)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--acc); outline-offset:2px}
+@media (max-width:380px){.fields{grid-template-columns:1fr 1fr; gap:8px} .frow input{font-size:23px} .stp{width:30px;height:30px}}
+</style>
+<style>
+/* ---------- file bar ---------- */
+.filebox{display:grid; gap:10px; margin-top:26px}
+@media (min-width:420px){.filebox{grid-template-columns:1fr 1fr}}
+.fbtn{
+  display:flex; align-items:center; justify-content:center; gap:8px; text-align:center;
+  border:1px solid var(--line); background:var(--surface); border-radius:12px;
+  padding:16px 12px; font-family:var(--disp); font-weight:700; font-size:15.5px;
+  cursor:pointer; position:relative; overflow:hidden;
+}
+.fbtn.pri{background:var(--acc); border-color:var(--acc); color:var(--acc-ink)}
+.fbtn:disabled{opacity:.5}
+.hidefile{position:fixed; left:-9999px; top:0; width:1px; height:1px; opacity:0}
+.fstat{font-size:13.5px; color:var(--ink-3); margin:10px 0 0; text-align:center; word-break:break-word}
+.fstat.bad{color:var(--acc); font-weight:600}
+.foot{margin-top:18px}
+</style>
+
+<div class="wrap">
+  <div class="bar">
+    <div class="bar-top">
+      <div class="brand">Set<span>·</span>by<span>·</span>Set</div>
+      <select class="wk" id="wksel" aria-label="Week"></select>
+    </div>
+    <div class="days" id="days" role="tablist"></div>
+  </div>
+
+  <div id="card"></div>
+
+  <div class="rail">
+    <h2 id="railhd">Session</h2>
+    <div id="rail"></div>
+  </div>
+
+  <div id="filebar"></div>
+
+  <p class="foot"><span class="sync" id="sync">Saved on this device</span></p>
+</div>
+
+<script>
+/* ========================= tiny zip (native streams) ========================= */
+const CRCT = (function () {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = CRCT[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function streamsOK() {
+  return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+}
+async function inflateRaw(u8) {
+  const s = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+async function deflateRaw(u8) {
+  const s = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+
+async function unzip(buf) {
+  const u8 = new Uint8Array(buf), dv = new DataView(buf);
+  let eo = -1;
+  for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eo = i; break; }
+  }
+  if (eo < 0) throw new Error('Not a valid .xlsx file');
+  const count = dv.getUint16(eo + 10, true);
+  let p = dv.getUint32(eo + 16, true);
+  const files = [];
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true);
+    const csize = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true);
+    const extraLen = dv.getUint16(p + 30, true);
+    const cmtLen = dv.getUint16(p + 32, true);
+    const lho = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nameLen));
+    const lNameLen = dv.getUint16(lho + 26, true);
+    const lExtraLen = dv.getUint16(lho + 28, true);
+    const start = lho + 30 + lNameLen + lExtraLen;
+    files.push({ name: name, method: method, raw: u8.subarray(start, start + csize) });
+    p += 46 + nameLen + extraLen + cmtLen;
+  }
+  const outMap = new Map();
+  for (const f of files) {
+    outMap.set(f.name, f.method === 8 ? await inflateRaw(f.raw) : f.raw.slice(0));
+  }
+  return outMap;
+}
+
+async function zipUp(map) {
+  const enc = new TextEncoder();
+  const locals = [], central = [];
+  let offset = 0;
+  for (const [name, data] of map) {
+    const nameB = enc.encode(name);
+    const crc = crc32(data);
+    const comp = await deflateRaw(data);
+    const lh = new Uint8Array(30 + nameB.length);
+    const ldv = new DataView(lh.buffer);
+    ldv.setUint32(0, 0x04034b50, true); ldv.setUint16(4, 20, true); ldv.setUint16(6, 0, true);
+    ldv.setUint16(8, 8, true); ldv.setUint16(10, 0, true); ldv.setUint16(12, 0x21, true);
+    ldv.setUint32(14, crc, true); ldv.setUint32(18, comp.length, true); ldv.setUint32(22, data.length, true);
+    ldv.setUint16(26, nameB.length, true); ldv.setUint16(28, 0, true);
+    lh.set(nameB, 30);
+    locals.push(lh, comp);
+
+    const ch = new Uint8Array(46 + nameB.length);
+    const cdv = new DataView(ch.buffer);
+    cdv.setUint32(0, 0x02014b50, true); cdv.setUint16(4, 20, true); cdv.setUint16(6, 20, true);
+    cdv.setUint16(8, 0, true); cdv.setUint16(10, 8, true); cdv.setUint16(12, 0, true); cdv.setUint16(14, 0x21, true);
+    cdv.setUint32(16, crc, true); cdv.setUint32(20, comp.length, true); cdv.setUint32(24, data.length, true);
+    cdv.setUint16(28, nameB.length, true); cdv.setUint16(30, 0, true); cdv.setUint16(32, 0, true);
+    cdv.setUint16(34, 0, true); cdv.setUint16(36, 0, true); cdv.setUint32(38, 0, true);
+    cdv.setUint32(42, offset, true);
+    ch.set(nameB, 46);
+    central.push(ch);
+    offset += lh.length + comp.length;
+  }
+  let cdSize = 0; central.forEach(function (c) { cdSize += c.length; });
+  const eocd = new Uint8Array(22);
+  const edv = new DataView(eocd.buffer);
+  edv.setUint32(0, 0x06054b50, true);
+  edv.setUint16(8, central.length, true); edv.setUint16(10, central.length, true);
+  edv.setUint32(12, cdSize, true); edv.setUint32(16, offset, true);
+  return new Blob(locals.concat(central, [eocd]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+/* ========================= xlsx ========================= */
+const NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+const RNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const DEC = new TextDecoder(), ENC = new TextEncoder();
+function parseXml(u8) { return new DOMParser().parseFromString(DEC.decode(u8), 'application/xml'); }
+function colName(n) { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; }
+function colNum(a) { let n = 0; for (let i = 0; i < a.length; i++) n = n * 26 + (a.charCodeAt(i) - 64); return n; }
+function refParts(ref) { const m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: colNum(m[1]), r: parseInt(m[2], 10) } : null; }
+
+function sheetList(zipMap) {
+  const wb = parseXml(zipMap.get('xl/workbook.xml'));
+  const rels = parseXml(zipMap.get('xl/_rels/workbook.xml.rels'));
+  const relMap = {};
+  Array.prototype.forEach.call(rels.getElementsByTagName('Relationship'), function (r) {
+    relMap[r.getAttribute('Id')] = r.getAttribute('Target');
+  });
+  const out = [];
+  Array.prototype.forEach.call(wb.getElementsByTagName('sheet'), function (s) {
+    const rid = s.getAttributeNS(RNS, 'id') || s.getAttribute('r:id');
+    let t = relMap[rid] || '';
+    if (t.charAt(0) === '/') t = t.slice(1); else t = 'xl/' + t;
+    out.push({ name: s.getAttribute('name'), path: t });
+  });
+  return out;
+}
+
+function sharedStrings(zipMap) {
+  const u8 = zipMap.get('xl/sharedStrings.xml');
+  if (!u8) return [];
+  const doc = parseXml(u8);
+  return Array.prototype.map.call(doc.getElementsByTagName('si'), function (si) {
+    return Array.prototype.map.call(si.getElementsByTagName('t'), function (t) { return t.textContent; }).join('');
+  });
+}
+
+function readGrid(zipMap, path, sst) {
+  const doc = parseXml(zipMap.get(path));
+  const grid = {};
+  Array.prototype.forEach.call(doc.getElementsByTagName('c'), function (c) {
+    const rp = refParts(c.getAttribute('r') || '');
+    if (!rp) return;
+    const t = c.getAttribute('t');
+    let val = null;
+    if (t === 'inlineStr') {
+      const is = c.getElementsByTagName('is')[0];
+      if (is) val = Array.prototype.map.call(is.getElementsByTagName('t'), function (x) { return x.textContent; }).join('');
+    } else {
+      const v = c.getElementsByTagName('v')[0];
+      if (v) {
+        if (t === 's') val = sst[parseInt(v.textContent, 10)];
+        else if (t === 'str' || t === 'e') val = v.textContent;
+        else if (t === 'b') val = v.textContent === '1';
+        else { const n = parseFloat(v.textContent); val = isFinite(n) ? n : v.textContent; }
+      }
+    }
+    if (val !== null && val !== '') { (grid[rp.r] = grid[rp.r] || {})[rp.c] = val; }
+  });
+  return grid;
+}
+
+function serialToDate(n) {
+  if (typeof n !== 'number' || n < 20000 || n > 80000) return null;
+  const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
+  return d.toISOString().slice(0, 10);
+}
+
+/* ---- parse Rok's layout out of a grid ---- */
+const SECS = ['Lower body', 'Upper body', 'Back', 'Core'];
+function cellV(grid, r, c) { return (grid[r] && grid[r][c] !== undefined) ? grid[r][c] : null; }
+
+function parseWeeks(grid, tabName) {
+  const rowsIdx = Object.keys(grid).map(Number).sort(function (a, b) { return a - b; });
+  const maxR = rowsIdx.length ? rowsIdx[rowsIdx.length - 1] : 0;
+  const anchors = [];
+  rowsIdx.forEach(function (r) {
+    Object.keys(grid[r]).map(Number).forEach(function (c) {
+      const v = grid[r][c];
+      if (typeof v === 'string' && /^Week\s*\d/.test(v) && v.indexOf('/') > -1) anchors.push({ r: r, c: c, label: v });
+    });
+  });
+  anchors.sort(function (a, b) { return a.r - b.r; });
+
+  return anchors.map(function (a, ai) {
+    const end = ai + 1 < anchors.length ? anchors[ai + 1].r : maxR + 1;
+    let start = null;
+    for (let k = 1; k <= 9; k++) { const d = serialToDate(cellV(grid, a.r, a.c + k)); if (d) { start = d; break; } }
+
+    const days = [];
+    for (let d = 0; d < 6; d++) {
+      const dc = a.c + d * 11;
+      const rws = [];
+      for (let r = a.r; r < end; r++) {
+        const head = cellV(grid, r, dc);
+        const isHead = typeof head === 'string' && SECS.indexOf(head.trim()) > -1 &&
+          String(cellV(grid, r, dc + 2) || '').toLowerCase() === 'sets';
+        if (!isHead) continue;
+        let cur = null;
+        for (let rr = r + 1; rr < end; rr++) {
+          const cat = cellV(grid, rr, dc), nm = cellV(grid, rr, dc + 1);
+          const cs = typeof cat === 'string' ? cat.trim() : '';
+          if (SECS.indexOf(cs) > -1 || cs === 'Weekly' || cs === 'Daily') break;
+          if (typeof nm === 'string' && nm.trim()) cur = nm.trim();
+          const st = cellV(grid, rr, dc + 2), rp = cellV(grid, rr, dc + 3),
+            w = cellV(grid, rr, dc + 5), rpe = cellV(grid, rr, dc + 8), com = cellV(grid, rr, dc + 9);
+          if (cur && (st !== null || rp !== null || w !== null || rpe !== null)) {
+            rws.push({
+              s: head.trim(), c: cs || null, e: cur,
+              st: st, rp: rp, w: w, r: typeof rpe === 'number' ? rpe : null,
+              n: typeof com === 'string' ? com : null, sr: rr, sc: dc
+            });
+          }
+        }
+      }
+      if (rws.length) days.push({ n: days.length + 1, rows: rws });
+    }
+    return { id: tabName + '|' + a.label + '|' + a.r, label: a.label, start: start, tab: tabName, days: days };
+  }).filter(function (w) { return w.days.length; });
+}
+
+/* ---- write values back into a worksheet ---- */
+function patchSheet(zipMap, path, edits) {
+  const doc = parseXml(zipMap.get(path));
+  const sd = doc.getElementsByTagName('sheetData')[0];
+  if (!sd) throw new Error('This sheet has no data section.');
+  const rowEls = {};
+  Array.prototype.forEach.call(sd.getElementsByTagName('row'), function (r) {
+    rowEls[parseInt(r.getAttribute('r'), 10)] = r;
+  });
+
+  function getRow(r) {
+    if (rowEls[r]) return rowEls[r];
+    const el = doc.createElementNS(NS, 'row');
+    el.setAttribute('r', String(r));
+    let before = null;
+    Array.prototype.some.call(sd.getElementsByTagName('row'), function (x) {
+      if (parseInt(x.getAttribute('r'), 10) > r) { before = x; return true; }
+      return false;
+    });
+    sd.insertBefore(el, before);
+    rowEls[r] = el;
+    return el;
+  }
+
+  let n = 0;
+  edits.forEach(function (e) {
+    const ref = colName(e.c) + e.r;
+    const row = getRow(e.r);
+    let cell = null;
+    Array.prototype.some.call(row.getElementsByTagName('c'), function (x) {
+      if (x.getAttribute('r') === ref) { cell = x; return true; } return false;
+    });
+    if (!cell) {
+      cell = doc.createElementNS(NS, 'c');
+      cell.setAttribute('r', ref);
+      let before = null;
+      Array.prototype.some.call(row.getElementsByTagName('c'), function (x) {
+        const p = refParts(x.getAttribute('r') || '');
+        if (p && p.c > e.c) { before = x; return true; } return false;
+      });
+      row.insertBefore(cell, before);
+    }
+    while (cell.firstChild) cell.removeChild(cell.firstChild);
+    if (typeof e.v === 'number') {
+      cell.removeAttribute('t');
+      const v = doc.createElementNS(NS, 'v');
+      v.textContent = String(e.v);
+      cell.appendChild(v);
+    } else {
+      cell.setAttribute('t', 'inlineStr');
+      const is = doc.createElementNS(NS, 'is'), t = doc.createElementNS(NS, 't');
+      t.textContent = String(e.v);
+      is.appendChild(t); cell.appendChild(is);
+    }
+    n++;
+  });
+
+  zipMap.set(path, ENC.encode(new XMLSerializer().serializeToString(doc)));
+  zipMap.delete('xl/calcChain.xml');
+  return n;
+}
+</script>
+
+<script>
+/* ========================= state ========================= */
+const $ = function (id) { return document.getElementById(id); };
+const num = function (v) { return typeof v === 'number' && isFinite(v); };
+const fmt = function (v) {
+  if (v === null || v === undefined || v === '') return '–';
+  if (typeof v === 'number') return String(Math.round(v * 1000) / 1000);
+  return String(v);
+};
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function shortLabel(w) {
+  const m = /\(([^)]+)\)/.exec(w.label || '');
+  let t = m ? m[1] : (w.label || 'Week');
+  if (w.start) { const p = String(w.start).split('-'); if (p.length === 3) t += ' · ' + parseInt(p[2], 10) + ' ' + MON[parseInt(p[1], 10) - 1]; }
+  return t;
+}
+
+let wbB64 = null, wbName = '', wbAt = 0, sheets = [], weeks = [], log = {}, view = 'session';
+let pos = { w: null, d: 1, i: 0 };
+let saveTimer = null;
+
+const LKEY = 'sbs-xlsx-v1';
+function loadLocal() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LKEY) || '{}');
+    if (raw.wbB64) { wbB64 = raw.wbB64; wbName = raw.wbName || 'workout.xlsx'; }
+    wbAt = raw.wbAt || 0;
+    if (raw.sheets) sheets = raw.sheets;
+    if (raw.weeks) weeks = raw.weeks;
+    if (raw.log) log = raw.log;
+    if (raw.pos) pos = raw.pos;
+  } catch (e) {}
+}
+function saveLocal() {
+  try {
+    localStorage.setItem(LKEY, JSON.stringify({ wbB64: wbB64, wbName: wbName, wbAt: wbAt, sheets: sheets, weeks: weeks, log: log, pos: pos }));
+  } catch (e) {
+    try { localStorage.setItem(LKEY, JSON.stringify({ sheets: sheets, weeks: weeks, log: log, pos: pos })); } catch (e2) {}
+  }
+}
+function save() {
+  saveLocal();
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(function () {
+    const s = $('sync'); if (s) { s.textContent = 'Saved'; s.className = 'sync on'; }
+  }, 600);
+}
+
+function b64FromBuf(buf) {
+  const u8 = new Uint8Array(buf); let s = '';
+  for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+function bufFromB64(b64) {
+  const bin = atob(b64), u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return u8.buffer;
+}
+
+function week() { return weeks.find(function (w) { return w.id === pos.w; }) || weeks[0] || null; }
+function day() { const w = week(); if (!w) return null; return w.days.find(function (d) { return d.n === pos.d; }) || w.days[0]; }
+function rows() { const d = day(); return d ? d.rows : []; }
+function key(i) { return pos.w + '|' + pos.d + '|' + i; }
+function entry(i) {
+  const k = key(i);
+  if (!log[k]) { const r = rows()[i] || {}; log[k] = { st: r.st, rp: r.rp, w: r.w, r: r.r, done: [], note: '' }; }
+  if (!Array.isArray(log[k].done)) log[k].done = [];
+  return log[k];
+}
+function setCount(i) { const n = Math.round(parseFloat(entry(i).st)); return (isFinite(n) && n > 0 && n < 12) ? n : 1; }
+function statusOf(i) {
+  const e = entry(i), n = setCount(i); let c = 0;
+  for (let k = 0; k < n; k++) if (e.done[k]) c++;
+  return c === 0 ? 'none' : (c >= n ? 'done' : 'part');
+}
+function firstUndone() { const rs = rows(); for (let i = 0; i < rs.length; i++) if (statusOf(i) !== 'done') return i; return 0; }
+function lastWeekRef(exName) {
+  const idx = weeks.findIndex(function (w) { return w.id === pos.w; });
+  if (idx <= 0) return null;
+  const d = weeks[idx - 1].days.find(function (x) { return x.n === pos.d; });
+  if (!d) return null;
+  const hit = d.rows.filter(function (r) { return r.e === exName; });
+  if (!hit.length) return null;
+  return hit.map(function (r) { return fmt(r.st) + '×' + fmt(r.rp) + ' @ ' + fmt(r.w) + (num(r.r) ? ' · RPE ' + fmt(r.r) : ''); }).join('   ·   ');
+}
+function parseVal(s) { if (s === '' || s === null || s === undefined) return null; const n = parseFloat(String(s).replace(',', '.')); return isFinite(n) ? n : String(s); }
+function differs(a, b) { if (a === null || a === undefined || a === '') return false; return String(a) !== String(b); }
+
+/* ========================= render ========================= */
+function renderBar() {
+  const sel = $('wksel'); sel.innerHTML = '';
+  if (!weeks.length) { sel.style.display = 'none'; $('days').innerHTML = ''; return; }
+  sel.style.display = '';
+  weeks.forEach(function (w) {
+    const o = document.createElement('option');
+    o.value = w.id; o.textContent = shortLabel(w);
+    if (w.id === pos.w) o.selected = true;
+    sel.appendChild(o);
+  });
+  const host = $('days'); host.innerHTML = '';
+  const wk = week(); if (!wk) return;
+  wk.days.forEach(function (d) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'day'; b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', d.n === pos.d ? 'true' : 'false');
+    const sd = pos.d; pos.d = d.n;
+    let done = 0; d.rows.forEach(function (r, i) { if (statusOf(i) === 'done') done++; });
+    pos.d = sd;
+    b.innerHTML = '<b>Day ' + d.n + '</b><i>' + done + '/' + d.rows.length + '</i>';
+    b.addEventListener('click', function () { pos.d = d.n; pos.i = firstUndone(); view = 'session'; save(); renderAll(); scrollTo(0, 0); });
+    host.appendChild(b);
+  });
+}
+
+function field(lbl, val, step, onChange, changed) {
+  const f = document.createElement('div'); f.className = 'f' + (changed ? ' changed' : '');
+  const l = document.createElement('label'); l.textContent = lbl;
+  const row = document.createElement('div'); row.className = 'frow';
+  const minus = document.createElement('button'); minus.type = 'button'; minus.className = 'stp'; minus.textContent = '−'; minus.setAttribute('aria-label', 'Decrease ' + lbl);
+  const inp = document.createElement('input'); inp.type = 'text'; inp.inputMode = 'decimal';
+  inp.value = (val === null || val === undefined) ? '' : String(val); inp.setAttribute('aria-label', lbl);
+  const plus = document.createElement('button'); plus.type = 'button'; plus.className = 'stp'; plus.textContent = '+'; plus.setAttribute('aria-label', 'Increase ' + lbl);
+  function bump(dir) {
+    const cur = parseFloat(String(inp.value).replace(',', '.'));
+    const next = Math.round(((isFinite(cur) ? cur : 0) + dir * step) * 1000) / 1000;
+    inp.value = String(next < 0 ? 0 : next); onChange(inp.value);
+  }
+  minus.addEventListener('click', function () { bump(-1); });
+  plus.addEventListener('click', function () { bump(1); });
+  inp.addEventListener('input', function () { onChange(inp.value); });
+  row.appendChild(minus); row.appendChild(inp); row.appendChild(plus);
+  f.appendChild(l); f.appendChild(row); return f;
+}
+
+function renderCard() {
+  const host = $('card'); host.innerHTML = '';
+  if (!weeks.length) {
+    const c = document.createElement('div'); c.className = 'card';
+    c.innerHTML = '<div class="tags"><span class="tag main">Start here</span></div>' +
+      '<h1 class="exname">Load Rok\'s file</h1>' +
+      '<p style="color:var(--ink-2);font-size:15.5px;margin:0 0 16px">Download the week from Google Sheets as <b>.xlsx</b> ' +
+      '(File → Download → Microsoft Excel) and pick it below. Everything stays on your phone.</p>';
+    host.appendChild(c);
+    return;
+  }
+  const rs = rows();
+  if (!rs.length) { host.innerHTML = '<div class="card">No exercises in this day.</div>'; return; }
+  if (pos.i >= rs.length) pos.i = rs.length - 1;
+  const r = rs[pos.i], e = entry(pos.i);
+  const card = document.createElement('div'); card.className = 'card';
+
+  const tags = document.createElement('div'); tags.className = 'tags';
+  [[r.s, ''], [r.c, 'main'], [(pos.i + 1) + ' of ' + rs.length, '']].forEach(function (p) {
+    if (!p[0]) return;
+    const t = document.createElement('span'); t.className = 'tag ' + p[1]; t.textContent = p[0]; tags.appendChild(t);
+  });
+  card.appendChild(tags);
+
+  const h = document.createElement('h1'); h.className = 'exname'; h.textContent = r.e; card.appendChild(h);
+
+  const rx = document.createElement('div'); rx.className = 'rx';
+  rx.innerHTML = '<span class="lbl">Prescribed</span><span class="v">' + fmt(r.st) + ' × ' + fmt(r.rp) +
+    '</span><span class="v">@ ' + fmt(r.w) + (num(r.w) ? ' kg' : '') + '</span>' +
+    (num(r.r) ? '<span class="v">RPE ' + fmt(r.r) + '</span>' : '');
+  card.appendChild(rx);
+
+  const ref = lastWeekRef(r.e);
+  if (ref) { const p = document.createElement('p'); p.className = 'lastwk'; p.innerHTML = 'Last week: <b>' + ref + '</b>'; card.appendChild(p); }
+
+  const fs = document.createElement('div'); fs.className = 'fields';
+  fs.appendChild(field('Sets', e.st, 1, function (v) { e.st = parseVal(v); save(); renderRail(); renderBar(); }, differs(e.st, r.st)));
+  fs.appendChild(field('Reps', e.rp, 1, function (v) { e.rp = parseVal(v); save(); renderRail(); }, differs(e.rp, r.rp)));
+  fs.appendChild(field('Weight kg', e.w, 2.5, function (v) { e.w = parseVal(v); save(); renderRail(); }, differs(e.w, r.w)));
+  fs.appendChild(field('RPE', e.r, 0.25, function (v) { e.r = parseVal(v); save(); renderRail(); }, differs(e.r, r.r)));
+  card.appendChild(fs);
+
+  const sr = document.createElement('div'); sr.className = 'setrow';
+  const sl = document.createElement('span'); sl.className = 'lbl'; sl.textContent = 'Sets done';
+  const tk = document.createElement('div'); tk.className = 'ticks';
+  for (let k = 0; k < setCount(pos.i); k++) {
+    (function (k) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'tick';
+      b.setAttribute('aria-pressed', e.done[k] ? 'true' : 'false'); b.setAttribute('aria-label', 'Set ' + (k + 1));
+      b.textContent = e.done[k] ? '✓' : String(k + 1);
+      b.addEventListener('click', function () {
+        e.done[k] = !e.done[k];
+        b.setAttribute('aria-pressed', e.done[k] ? 'true' : 'false');
+        b.textContent = e.done[k] ? '✓' : String(k + 1);
+        save(); renderRail(); renderBar();
+      });
+      tk.appendChild(b);
+    })(k);
+  }
+  sr.appendChild(sl); sr.appendChild(tk); card.appendChild(sr);
+
+  const nt = document.createElement('textarea'); nt.className = 'note'; nt.placeholder = 'Note for Rok…';
+  nt.value = e.note || ''; nt.setAttribute('aria-label', 'Note');
+  nt.addEventListener('input', function () { e.note = nt.value; save(); });
+  card.appendChild(nt);
+
+  if (r.n && /^https?:/.test(r.n)) {
+    const a = document.createElement('a'); a.className = 'vid'; a.href = r.n; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = '▶ Video from Rok'; card.appendChild(a);
+  } else if (r.n) {
+    const p = document.createElement('p'); p.className = 'lastwk'; p.style.marginTop = '10px'; p.textContent = 'Rok: ' + r.n; card.appendChild(p);
+  }
+
+  const nav = document.createElement('div'); nav.className = 'nav';
+  const prev = document.createElement('button'); prev.type = 'button'; prev.textContent = '←'; prev.disabled = pos.i === 0;
+  prev.setAttribute('aria-label', 'Previous exercise');
+  prev.addEventListener('click', function () { pos.i = Math.max(0, pos.i - 1); save(); renderAll(); scrollTo(0, 0); });
+  const next = document.createElement('button'); next.type = 'button'; next.className = 'next';
+  next.textContent = pos.i >= rs.length - 1 ? 'Finish session' : 'Next exercise →';
+  next.addEventListener('click', function () {
+    const en = entry(pos.i);
+    for (let k = 0; k < setCount(pos.i); k++) en.done[k] = true;
+    if (pos.i < rs.length - 1) pos.i++; else view = 'done';
+    save(); renderAll(); scrollTo(0, 0);
+  });
+  nav.appendChild(prev); nav.appendChild(next); card.appendChild(nav);
+  host.appendChild(card);
+}
+
+function dayStats(dn) {
+  const sd = pos.d, si = pos.i; pos.d = dn;
+  const rs = rows(); let sets = 0, vol = 0, rpes = [], done = 0;
+  rs.forEach(function (r, i) {
+    const e = entry(i), n = setCount(i);
+    let c = 0; for (let k = 0; k < n; k++) if (e.done[k]) c++;
+    sets += c; if (c === n) done++;
+    if (num(e.w) && num(e.rp)) vol += c * e.rp * e.w;
+    if (num(e.r)) rpes.push(e.r);
+  });
+  pos.d = sd; pos.i = si;
+  return { total: rs.length, done: done, sets: sets, vol: Math.round(vol), rpe: rpes.length ? Math.round((rpes.reduce(function (a, b) { return a + b; }, 0) / rpes.length) * 100) / 100 : null };
+}
+function dayComplete(dn) { const s = dayStats(dn); return s.total > 0 && s.done === s.total; }
+
+function renderDone() {
+  const host = $('card'); host.innerHTML = '';
+  const w = week(), st = dayStats(pos.d);
+  const nextDay = w.days.filter(function (d) { return d.n > pos.d && !dayComplete(d.n); })[0] ||
+    w.days.filter(function (d) { return !dayComplete(d.n); })[0];
+  const allDone = w.days.every(function (d) { return dayComplete(d.n); });
+  const p = document.createElement('div'); p.className = 'done';
+  p.innerHTML = (allDone ? '<div class="trophy">🏆</div>' : '') +
+    '<div class="kick">' + (allDone ? 'Every day logged' : 'Session complete') + '</div>' +
+    '<h1>' + (allDone ? 'Week done!' : 'Day ' + pos.d + ' done') + '</h1>' +
+    '<p class="sub">' + w.label + (allDone ? ' — all days in the bag.' : '') + '</p>' +
+    '<div class="stats">' +
+      '<div class="stat"><b>' + st.done + '/' + st.total + '</b><i>Entries</i></div>' +
+      '<div class="stat"><b>' + st.sets + '</b><i>Sets</i></div>' +
+      '<div class="stat"><b>' + (st.vol > 999 ? (Math.round(st.vol / 100) / 10) + 'k' : st.vol) + '</b><i>kg volume</i></div>' +
+    '</div>' +
+    (st.rpe !== null ? '<p class="sub" style="margin:-8px 0 16px">Average RPE ' + st.rpe + '</p>' : '');
+
+  if (!allDone && nextDay) {
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'go';
+    go.textContent = 'Start Day ' + nextDay.n + ' →';
+    go.addEventListener('click', function () { pos.d = nextDay.n; pos.i = firstUndone(); view = 'session'; save(); renderAll(); scrollTo(0, 0); });
+    p.appendChild(go);
+  } else if (allDone) {
+    const go = document.createElement('button'); go.type = 'button'; go.className = 'go fin';
+    go.textContent = '⤓  Export the filled-in file';
+    go.addEventListener('click', doExport);
+    p.appendChild(go);
+  }
+  const back = document.createElement('button'); back.type = 'button'; back.className = 'back';
+  back.textContent = '← Back to Day ' + pos.d;
+  back.addEventListener('click', function () { view = 'session'; renderAll(); scrollTo(0, 0); });
+  p.appendChild(back);
+  host.appendChild(p);
+}
+
+function renderRail() {
+  const host = $('rail'); host.innerHTML = '';
+  $('railhd').textContent = weeks.length ? 'Session' : '';
+  const rs = rows(); let lastSec = null;
+  rs.forEach(function (r, i) {
+    if (r.s !== lastSec) { const s = document.createElement('div'); s.className = 'secbreak'; s.textContent = r.s; host.appendChild(s); lastSec = r.s; }
+    const e = entry(i), st = statusOf(i);
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'rl';
+    b.setAttribute('aria-current', i === pos.i ? 'true' : 'false');
+    b.innerHTML = '<span class="i">' + (i + 1) + '</span><span class="t"><b></b><i></i></span>' +
+      '<span class="st ' + (st === 'done' ? 'done' : st === 'part' ? 'part' : '') + '"></span>';
+    b.querySelector('b').textContent = r.e;
+    b.querySelector('i').textContent = fmt(e.st) + '×' + fmt(e.rp) + ' @ ' + fmt(e.w) + (num(e.r) ? '  ·  RPE ' + fmt(e.r) : '');
+    b.addEventListener('click', function () { pos.i = i; save(); renderAll(); scrollTo(0, 0); });
+    host.appendChild(b);
+  });
+}
+
+function renderFiles() {
+  const host = $('filebar'); host.innerHTML = '';
+  const box = document.createElement('div'); box.className = 'filebox';
+
+  const pick = document.createElement('button');
+  pick.type = 'button'; pick.className = 'fbtn' + (weeks.length ? '' : ' pri');
+  pick.textContent = weeks.length ? 'Load a different file' : '📄  Choose Rok’s .xlsx';
+  let inp = document.getElementById('xlsxin');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.id = 'xlsxin'; inp.className = 'hidefile';
+    document.body.appendChild(inp);
+  }
+  inp.onchange = function (ev) {
+    const f = ev.target.files && ev.target.files[0];
+    if (f) doImport(f); else stat('No file was chosen.', true);
+  };
+  pick.addEventListener('click', function () {
+    stat('Opening the file picker…');
+    try { inp.value = ''; } catch (e) {}
+    if (pickTimer) clearTimeout(pickTimer);
+    pickTimer = setTimeout(function () {
+      stat('This app cannot open a file picker. Open the same page in Chrome, or load the file once on your computer — it syncs here automatically.', true);
+    }, 2500);
+    inp.click();
+  });
+  box.appendChild(pick);
+
+  if (weeks.length) {
+    const exp = document.createElement('button');
+    exp.type = 'button'; exp.className = 'fbtn pri'; exp.id = 'expbtn';
+    exp.textContent = '⤓  Export filled-in .xlsx';
+    exp.addEventListener('click', doExport);
+    box.appendChild(exp);
+  }
+  host.appendChild(box);
+
+  const st = document.createElement('p'); st.className = 'fstat'; st.id = 'fstat';
+  st.textContent = wbName ? wbName : 'No file loaded yet';
+  host.appendChild(st);
+}
+
+function renderAll() { renderBar(); if (view === 'done' && week()) renderDone(); else renderCard(); renderRail(); renderFiles(); }
+
+function stat(msg, bad) {
+  const s = $('fstat'); if (!s) return;
+  s.textContent = msg; s.className = 'fstat' + (bad ? ' bad' : '');
+}
+
+/* ========================= import / export ========================= */
+function readBuf(file) {
+  if (file.arrayBuffer) return file.arrayBuffer();
+  return new Promise(function (res, rej) {
+    const fr = new FileReader();
+    fr.onload = function () { res(fr.result); };
+    fr.onerror = function () { rej(new Error('the file could not be read')); };
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+let pickTimer = null;
+async function doImport(file) {
+  if (pickTimer) { clearTimeout(pickTimer); pickTimer = null; }
+  if (!streamsOK()) { stat('This browser cannot unzip files — update Chrome, or try another browser.', true); return; }
+  stat('Reading ' + (file.name || 'the file') + '…');
+  try {
+    const buf = await readBuf(file);
+    const sig = new Uint8Array(buf, 0, 2);
+    if (sig[0] !== 0x50 || sig[1] !== 0x4B) {
+      stat('That is not an .xlsx. In Sheets use File \u2192 Download \u2192 Microsoft Excel (.xlsx) \u2014 not CSV or PDF.', true);
+      return;
+    }
+    const map = await unzip(buf);
+    const sl = sheetList(map);
+    const sst = sharedStrings(map);
+    let found = [];
+    sl.forEach(function (s) {
+      if (!map.get(s.path)) return;
+      found = found.concat(parseWeeks(readGrid(map, s.path, sst), s.name));
+    });
+    if (!found.length) {
+      stat('No training weeks found in that file. The app looks for a cell like "Week 1/4", and under it a row with a body-part heading and "Sets" two columns to its right. Tabs checked: ' +
+        sl.map(function (x) { return x.name; }).join(', ') + '.', true);
+      return;
+    }
+    wbB64 = b64FromBuf(buf); wbName = file.name;
+    sheets = sl; weeks = found; log = {}; view = 'session';
+    pos = { w: weeks[weeks.length - 1].id, d: 1, i: 0 };
+    wbAt = Date.now();
+    save(); renderAll(); scrollTo(0, 0);
+    const nd = weeks[weeks.length - 1].days.length;
+    stat('Loaded ' + weeks.length + ' week' + (weeks.length > 1 ? 's' : '') + ' · ' + nd + '-day split · from ' + file.name);
+  } catch (err) {
+    stat('Could not read that file: ' + err.message, true);
+  }
+}
+
+function buildEdits() {
+  const byTab = {};
+  Object.keys(log).forEach(function (k) {
+    const parts = k.split('|');
+    const wid = parts.slice(0, parts.length - 2).join('|');
+    const dn = parseInt(parts[parts.length - 2], 10), ri = parseInt(parts[parts.length - 1], 10);
+    const w = weeks.find(function (x) { return x.id === wid; }); if (!w) return;
+    const d = w.days.find(function (x) { return x.n === dn; }); if (!d) return;
+    const r = d.rows[ri]; if (!r || !num(r.sr) || !num(r.sc)) return;
+    const e = log[k];
+    const list = byTab[w.tab] = byTab[w.tab] || [];
+    [[r.sc + 2, e.st], [r.sc + 3, e.rp], [r.sc + 5, e.w], [r.sc + 8, e.r]].forEach(function (p) {
+      if (p[1] === null || p[1] === undefined || p[1] === '') return;
+      list.push({ r: r.sr, c: p[0], v: p[1] });
+    });
+  });
+  return byTab;
+}
+
+async function doExport() {
+  if (!wbB64) { stat('Load the file first.', true); return; }
+  const btn = $('expbtn'); if (btn) { btn.disabled = true; btn.textContent = 'Building…'; }
+  stat('Writing your numbers into the file…');
+  try {
+    const map = await unzip(bufFromB64(wbB64));
+    const byTab = buildEdits();
+    let n = 0;
+    Object.keys(byTab).forEach(function (tab) {
+      const sh = sheets.find(function (s) { return s.name === tab; });
+      if (!sh || !map.get(sh.path)) return;
+      n += patchSheet(map, sh.path, byTab[tab]);
+    });
+    if (!n) { stat('Nothing logged yet — fill something in first.', true); resetBtn(); return; }
+    const blob = await zipUp(map);
+    const base = wbName.replace(/\.xlsx$/i, '');
+    const name = base + ' — filled.xlsx';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 2000);
+    stat('Exported — ' + n + ' cells written. Check your downloads, then send it to your coach.');
+  } catch (err) {
+    stat('Export failed: ' + ((err && err.message) || err), true);
+  }
+  resetBtn();
+  function resetBtn() { const b = $('expbtn'); if (b) { b.disabled = false; b.textContent = '⤓  Export filled-in .xlsx'; } }
+}
+
+/* ========================= boot ========================= */
+$('wksel').addEventListener('change', function (ev) { pos.w = ev.target.value; pos.d = 1; pos.i = 0; view = 'session'; save(); renderAll(); });
+
+loadLocal();
+if (weeks.length && !pos.w) pos.w = weeks[weeks.length - 1].id;
+renderAll();
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+}
+</script>
+
