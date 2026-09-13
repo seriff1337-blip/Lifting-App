@@ -262,6 +262,37 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .fstat{font-size:13.5px; color:var(--ink-3); margin:10px 0 0; text-align:center; word-break:break-word}
 .fstat.bad{color:var(--acc); font-weight:600}
 .foot{margin-top:18px}
+/* ---------- daily check-in ---------- */
+details.chk{background:var(--surface); border:1px solid var(--line); border-radius:14px; margin-top:16px; overflow:hidden}
+details.chk summary{padding:12px 14px; cursor:pointer; list-style:none;
+  display:flex; align-items:center; justify-content:space-between; gap:10px}
+details.chk summary::-webkit-details-marker{display:none}
+.chk .sumlab{font-family:var(--disp); font-weight:700; font-size:14px; flex:none}
+.chk .sumlab::before{content:"+ "; color:var(--acc)}
+details.chk[open] .sumlab::before{content:"– "}
+.chk .sumval{font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums;
+  text-align:right; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.chkbody{padding:0 14px 14px}
+.chkdays{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:12px}
+.chkd{border:1px solid var(--line); background:var(--surface-2); border-radius:9px;
+  padding:6px 1px; text-align:center; line-height:1.1; min-width:0}
+.chkd b{display:block; font-family:var(--disp); font-weight:700; font-size:13px}
+.chkd i{display:block; font-style:normal; font-size:9px; letter-spacing:.05em;
+  text-transform:uppercase; color:var(--ink-3); margin-top:2px}
+.chkd.has{border-color:var(--ok)}
+.chkd[aria-pressed="true"]{background:var(--acc); border-color:var(--acc); color:var(--acc-ink)}
+.chkd[aria-pressed="true"] i{color:var(--acc-ink); opacity:.75}
+.chkf{display:grid; gap:9px}
+.chkf label{display:block; font-size:11px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:4px}
+.chkf input{width:100%; background:var(--sunk); border:1px solid var(--line); border-radius:10px;
+  padding:11px 12px; font-family:var(--disp); font-weight:700; font-size:18px;
+  color:var(--ink); outline:none; font-variant-numeric:tabular-nums}
+.chkf input:focus{border-color:var(--acc)}
+.wknote{background:var(--acc-soft); border:1px solid var(--acc); border-radius:10px; padding:9px 11px; margin-bottom:12px}
+.wknote span{display:block; font-size:10.5px; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--acc); margin-bottom:2px}
+.wknote p{margin:0; font-size:14px; line-height:1.4; white-space:pre-wrap; word-break:break-word}
 </style>
 
 </head>
@@ -274,6 +305,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
     </div>
     <div class="days" id="days" role="tablist"></div>
   </div>
+
+  <div id="checkin"></div>
 
   <div id="card"></div>
 
@@ -472,6 +505,41 @@ function parseWeeks(grid, tabName) {
     let start = null;
     for (let k = 1; k <= 9; k++) { const d = serialToDate(cellV(grid, a.r, a.c + k)); if (d) { start = d; break; } }
 
+    /* ---- weekly check-in strip: dates on the anchor row, metric rows below ---- */
+    const cdays = [];
+    for (let k = 0; k < 7; k++) {
+      const cc = a.c + 2 + k;
+      cdays.push({ c: cc, date: serialToDate(cellV(grid, a.r, cc)) });
+    }
+    const WANT = [
+      { key: 'wt', re: /^weight/i, label: 'Weight', unit: 'kg', kind: 'num' },
+      { key: 'sl', re: /^hours?\s*of\s*sleep/i, label: 'Sleep', unit: '', kind: 'txt' },
+      { key: 'kc', re: /^kcal/i, label: 'Kcal', unit: '', kind: 'num' }
+    ];
+    const mrows = [];
+    for (let rr = a.r; rr <= a.r + 6; rr++) {
+      const lab = cellV(grid, rr, a.c + 1);
+      if (typeof lab !== 'string') continue;
+      WANT.forEach(function (wnt) {
+        if (!wnt.re.test(lab.trim())) return;
+        if (mrows.some(function (m) { return m.key === wnt.key; })) return;
+        mrows.push({ key: wnt.key, label: wnt.label, unit: wnt.unit, kind: wnt.kind, row: rr });
+      });
+    }
+    cdays.forEach(function (dc) {
+      dc.v = {};
+      mrows.forEach(function (m) { dc.v[m.key] = cellV(grid, m.row, dc.c); });
+    });
+    let wkNote = null;
+    for (let rr = a.r; rr <= a.r + 6; rr++) {
+      const lab = cellV(grid, rr, a.c + 2);
+      if (typeof lab === 'string' && /^coach\s*notes/i.test(lab.trim())) {
+        const v = cellV(grid, rr, a.c + 3);
+        if (typeof v === 'string' && v.trim()) wkNote = v.trim();
+      }
+    }
+    const chk = mrows.length ? { days: cdays, m: mrows, note: wkNote } : (wkNote ? { days: [], m: [], note: wkNote } : null);
+
     const days = [];
     for (let d = 0; d < 6; d++) {
       const dc = a.c + d * 11;
@@ -500,7 +568,7 @@ function parseWeeks(grid, tabName) {
       }
       if (rws.length) days.push({ n: days.length + 1, rows: rws });
     }
-    return { id: tabName + '|' + a.label + '|' + a.r, label: a.label, start: start, tab: tabName, days: days };
+    return { id: tabName + '|' + a.label + '|' + a.r, label: a.label, start: start, tab: tabName, days: days, chk: chk };
   }).filter(function (w) { return w.days.length; });
 }
 
@@ -637,6 +705,42 @@ function entry(i) {
   return log[k];
 }
 function setCount(i) { const n = Math.round(parseFloat(entry(i).st)); return (isFinite(n) && n > 0 && n < 12) ? n : 1; }
+
+/* ---- daily check-in (weight / sleep / kcal), one column per calendar day ---- */
+let chkSel = 0;
+function chkKey(k) { return pos.w + '|CHK|' + k; }
+function chkEntry(k) {
+  const kk = chkKey(k), w = week();
+  if (!log[kk]) {
+    const src = (w && w.chk && w.chk.days[k] && w.chk.days[k].v) || {};
+    log[kk] = { wt: src.wt, sl: src.sl, kc: src.kc };
+  }
+  return log[kk];
+}
+function chkFilled(k) {
+  const e = chkEntry(k);
+  return ['wt', 'sl', 'kc'].some(function (f) {
+    const v = e[f]; return v !== null && v !== undefined && String(v).trim() !== '';
+  });
+}
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function dowOf(iso) {
+  if (!iso) return null;
+  const d = new Date(iso + 'T00:00:00Z');
+  return isFinite(d.getTime()) ? DOW[d.getUTCDay()] : null;
+}
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function chkDefaultIdx(w) {
+  if (!w || !w.chk || !w.chk.days.length) return 0;
+  const t = todayISO();
+  const hit = w.chk.days.findIndex(function (d) { return d.date === t; });
+  if (hit > -1) return hit;
+  for (let k = w.chk.days.length - 1; k >= 0; k--) if (chkFilled(k)) return Math.min(k + 1, w.chk.days.length - 1);
+  return 0;
+}
 function statusOf(i) {
   const e = entry(i), n = setCount(i); let c = 0;
   for (let k = 0; k < n; k++) if (e.done[k]) c++;
@@ -873,6 +977,105 @@ function renderRail() {
   });
 }
 
+function renderCheckin() {
+  const host = $('checkin'); host.innerHTML = '';
+  const w = week();
+  if (!w || !w.chk) return;
+  const cd = w.chk.days, ms = w.chk.m;
+
+  const box = document.createElement('details'); box.className = 'chk';
+  const wasOpen = host.getAttribute('data-open') === '1';
+  box.open = wasOpen;
+  box.addEventListener('toggle', function () { host.setAttribute('data-open', box.open ? '1' : '0'); });
+
+  if (chkSel >= cd.length) chkSel = 0;
+
+  const sum = document.createElement('summary');
+  const sl = document.createElement('span'); sl.className = 'sumlab'; sl.textContent = 'Daily check-in';
+  const sv = document.createElement('span'); sv.className = 'sumval';
+  sum.appendChild(sl); sum.appendChild(sv);
+  box.appendChild(sum);
+
+  const body = document.createElement('div'); body.className = 'chkbody';
+
+  if (w.chk.note) {
+    const wn = document.createElement('div'); wn.className = 'wknote';
+    const t = document.createElement('span'); t.textContent = 'Coach notes for the week';
+    const pp = document.createElement('p'); pp.textContent = w.chk.note;
+    wn.appendChild(t); wn.appendChild(pp); body.appendChild(wn);
+  }
+
+  const strip = document.createElement('div'); strip.className = 'chkdays';
+  const inputs = {};
+
+  function refreshSummary() {
+    if (!cd.length) { sv.textContent = ''; return; }
+    const e = chkEntry(chkSel), d = cd[chkSel];
+    const bits = [];
+    ms.forEach(function (m) {
+      const v = e[m.key];
+      if (v === null || v === undefined || String(v).trim() === '') return;
+      bits.push(String(v).trim() + (m.unit ? ' ' + m.unit : ''));
+    });
+    const dl = d.date ? (dowOf(d.date) + ' ' + parseInt(d.date.split('-')[2], 10)) : ('Day ' + (chkSel + 1));
+    sv.textContent = dl + (bits.length ? ' · ' + bits.join(' · ') : ' · not logged');
+  }
+
+  function paintStrip() {
+    Array.prototype.forEach.call(strip.children, function (b, k) {
+      b.setAttribute('aria-pressed', k === chkSel ? 'true' : 'false');
+      b.className = 'chkd' + (chkFilled(k) ? ' has' : '');
+    });
+  }
+
+  function loadFields() {
+    const e = chkEntry(chkSel);
+    ms.forEach(function (m) {
+      const v = e[m.key];
+      inputs[m.key].value = (v === null || v === undefined) ? '' : String(v);
+    });
+  }
+
+  cd.forEach(function (d, k) {
+    const b = document.createElement('button'); b.type = 'button';
+    const dn = d.date ? parseInt(d.date.split('-')[2], 10) : (k + 1);
+    b.innerHTML = '<b></b><i></i>';
+    b.querySelector('b').textContent = String(dn);
+    b.querySelector('i').textContent = dowOf(d.date) || '';
+    b.addEventListener('click', function () {
+      chkSel = k; loadFields(); paintStrip(); refreshSummary();
+    });
+    strip.appendChild(b);
+  });
+  body.appendChild(strip);
+
+  const ff = document.createElement('div'); ff.className = 'chkf';
+  ms.forEach(function (m) {
+    const wrapEl = document.createElement('div');
+    const lab = document.createElement('label');
+    lab.textContent = m.label + (m.unit ? ' (' + m.unit + ')' : '');
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.setAttribute('aria-label', m.label);
+    if (m.kind === 'num') { inp.inputMode = 'decimal'; inp.placeholder = m.key === 'kc' ? '2150' : '71.8'; }
+    else { inp.placeholder = '7h30m'; }
+    inp.addEventListener('input', function () {
+      const e = chkEntry(chkSel);
+      const raw = inp.value.trim();
+      e[m.key] = raw === '' ? null : raw;
+      save(); paintStrip(); refreshSummary();
+    });
+    inputs[m.key] = inp;
+    lab.setAttribute('for', 'chkf-' + m.key); inp.id = 'chkf-' + m.key;
+    wrapEl.appendChild(lab); wrapEl.appendChild(inp); ff.appendChild(wrapEl);
+  });
+  body.appendChild(ff);
+  box.appendChild(body);
+  host.appendChild(box);
+
+  loadFields(); paintStrip(); refreshSummary();
+}
+
 function renderFiles() {
   const host = $('filebar'); host.innerHTML = '';
   const box = document.createElement('div'); box.className = 'filebox';
@@ -915,7 +1118,7 @@ function renderFiles() {
   host.appendChild(st);
 }
 
-function renderAll() { renderBar(); if (view === 'done' && week()) renderDone(); else renderCard(); renderRail(); renderFiles(); }
+function renderAll() { renderBar(); renderCheckin(); if (view === 'done' && week()) renderDone(); else renderCard(); renderRail(); renderFiles(); }
 
 function stat(msg, bad) {
   const s = $('fstat'); if (!s) return;
@@ -962,6 +1165,7 @@ async function doImport(file) {
     sheets = sl; weeks = found; log = {}; view = 'session';
     pos = { w: weeks[weeks.length - 1].id, d: 1, i: 0 };
     wbAt = Date.now();
+    chkSel = chkDefaultIdx(week());
     save(); renderAll(); scrollTo(0, 0);
     const nd = weeks[weeks.length - 1].days.length;
     stat('Loaded ' + weeks.length + ' week' + (weeks.length > 1 ? 's' : '') + ' · ' + nd + '-day split · from ' + file.name);
@@ -972,7 +1176,27 @@ async function doImport(file) {
 
 function buildEdits() {
   const byTab = {};
+
+  /* daily check-in rows: weight / sleep / kcal, one column per calendar day */
+  weeks.forEach(function (w) {
+    if (!w.chk || !w.chk.m.length) return;
+    const list = byTab[w.tab] = byTab[w.tab] || [];
+    w.chk.days.forEach(function (d, k) {
+      const e = log[w.id + '|CHK|' + k];
+      if (!e) return;
+      w.chk.m.forEach(function (m) {
+        const raw = e[m.key];
+        if (raw === null || raw === undefined || String(raw).trim() === '') return;
+        const txt = String(raw).trim();
+        const n = Number(txt.replace(',', '.'));
+        const v = (m.kind === 'num' && txt !== '' && isFinite(n)) ? n : txt;
+        list.push({ r: m.row, c: d.c, v: v });
+      });
+    });
+  });
+
   Object.keys(log).forEach(function (k) {
+    if (k.indexOf('|CHK|') > -1) return;
     const parts = k.split('|');
     const wid = parts.slice(0, parts.length - 2).join('|');
     const dn = parseInt(parts[parts.length - 2], 10), ri = parseInt(parts[parts.length - 1], 10);
@@ -1025,10 +1249,11 @@ async function doExport() {
 }
 
 /* ========================= boot ========================= */
-$('wksel').addEventListener('change', function (ev) { pos.w = ev.target.value; pos.d = 1; pos.i = 0; view = 'session'; save(); renderAll(); });
+$('wksel').addEventListener('change', function (ev) { pos.w = ev.target.value; pos.d = 1; pos.i = 0; view = 'session'; chkSel = chkDefaultIdx(week()); $('checkin').setAttribute('data-open', '0'); save(); renderAll(); });
 
 loadLocal();
 if (weeks.length && !pos.w) pos.w = weeks[weeks.length - 1].id;
+chkSel = chkDefaultIdx(week());
 renderAll();
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
