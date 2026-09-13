@@ -934,7 +934,7 @@ function renderCard() {
         e.done[k] = !e.done[k];
         b.setAttribute('aria-pressed', e.done[k] ? 'true' : 'false');
         b.textContent = e.done[k] ? '✓' : String(k + 1);
-        save(); renderRail(); renderBar();
+        save(); renderRail(); renderBar(); maybeAutoPush();
       });
       tk.appendChild(b);
     })(k);
@@ -1011,10 +1011,18 @@ function renderDone() {
     p.appendChild(go);
   }
   const src = loadSrc();
-  if (src.writer && src.token) {
-    const ps = document.createElement('p'); ps.className = 'pushstat'; ps.id = 'pushstat';
+  const ps = document.createElement('p'); ps.className = 'pushstat'; ps.id = 'pushstat';
+  p.appendChild(ps);
+
+  if (!src.writer || !src.token) {
+    /* Say so out loud. Finishing a day and seeing nothing happen is the
+       worst possible answer to "did it reach the sheet?". */
+    ps.className = 'pushstat bad';
+    ps.textContent = 'Not written to Rok’s sheet — the sheet writer is not set up yet. ' +
+      'Open “Connect Rok’s sheet” at the bottom, then “Auto-fill the sheet”. ' +
+      'Export still works in the meantime.';
+  } else {
     ps.textContent = log[pushedKey(w.id, pos.d)] ? 'Already in Rok’s sheet.' : '';
-    p.appendChild(ps);
 
     const pb = document.createElement('button'); pb.type = 'button'; pb.className = 'go alt'; pb.id = 'pushbtn';
     pb.textContent = '⇧  Fill Day ' + pos.d + ' into Rok’s sheet';
@@ -1031,12 +1039,8 @@ function renderDone() {
   p.appendChild(back);
   host.appendChild(p);
 
-  /* The day is finished and on screen: send it up, unless the exact same
-     numbers already went. Deliberately after the render, so the status
-     line exists to write into. */
-  if (src.writer && src.token && src.auto !== false && dayComplete(pos.d)) {
-    setTimeout(function () { pushDay(w.id, pos.d, true); }, 60);
-  }
+  /* Deliberately after the render, so the status line exists to write into. */
+  maybeAutoPush();
 }
 
 function renderRail() {
@@ -1211,6 +1215,13 @@ function renderFiles() {
   const st = document.createElement('p'); st.className = 'fstat'; st.id = 'fstat';
   st.textContent = wbName ? (wbName + (wbAt ? ' \u00b7 ' + agoText(wbAt) : '')) : 'No file loaded yet';
   host.appendChild(st);
+
+  const ws = document.createElement('p'); ws.className = 'fstat';
+  ws.style.marginTop = '4px';
+  ws.textContent = (src.writer && src.token)
+    ? (src.auto === false ? 'Sheet writer ready \u00b7 auto-fill off' : 'Sheet writer ready \u00b7 auto-fill on')
+    : 'Sheet writer not set up \u2014 finishing a day will not reach Rok\u2019s sheet';
+  host.appendChild(ws);
 
   /* ---- connect Rok's sheet ---- */
   const d = document.createElement('details'); d.className = 'imp';
@@ -1527,6 +1538,16 @@ async function pushDay(wid, dn, auto) {
     pushing = false;
     const bt = $('pushbtn'); if (bt) { bt.disabled = false; bt.textContent = '\u21e7  Fill Day ' + dn + ' into Rok\u2019s sheet'; }
   }
+}
+
+/* Fires wherever a day can become complete — ticking the last set counts,
+   not just walking to the finish screen. The fingerprint in pushDay stops
+   this from sending the same numbers twice. */
+function maybeAutoPush() {
+  const src = loadSrc(), w = week();
+  if (!w || !src.writer || !src.token || src.auto === false) return;
+  if (!dayComplete(pos.d)) return;
+  setTimeout(function () { pushDay(w.id, pos.d, true); }, 60);
 }
 
 function pushStat(msg, kind) {
