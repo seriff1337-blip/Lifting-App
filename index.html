@@ -257,6 +257,14 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
   cursor:pointer; position:relative; overflow:hidden;
 }
 .fbtn.pri{background:var(--acc); border-color:var(--acc); color:var(--acc-ink)}
+.fbtn.alt{border-color:var(--acc); color:var(--acc); background:var(--surface)}
+.srcrow{margin-bottom:10px}
+.srcrow label{display:block; font-size:11px; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:4px}
+.srcrow input{width:100%; background:var(--sunk); border:1px solid var(--line); border-radius:10px;
+  padding:11px 12px; font-size:14px; color:var(--ink); outline:none}
+.srcrow input:focus{border-color:var(--acc)}
+.impbody .go.ghost{margin-top:8px; background:none; border-color:var(--line); color:var(--ink-3)}
 .fbtn:disabled{opacity:.5}
 .hidefile{position:fixed; left:-9999px; top:0; width:1px; height:1px; opacity:0}
 .fstat{font-size:13.5px; color:var(--ink-3); margin:10px 0 0; text-align:center; word-break:break-word}
@@ -655,6 +663,38 @@ function shortLabel(w) {
 let wbB64 = null, wbName = '', wbAt = 0, sheets = [], weeks = [], log = {}, view = 'session';
 let pos = { w: null, d: 1, i: 0 };
 let saveTimer = null;
+
+/* ---- where the workbook comes from: Rok's sheet id + the CORS relay ----
+   Kept in its own key so it survives a "load a file instead", and so it is
+   never evicted by the quota fallback in saveLocal(). Per device on purpose:
+   never bake a sheet id into the build, or everyone shares one log. */
+const SKEY = 'sbs-src-v1';
+function loadSrc() { try { return JSON.parse(localStorage.getItem(SKEY) || '{}') || {}; } catch (e) { return {}; } }
+function saveSrc(o) { try { localStorage.setItem(SKEY, JSON.stringify(o)); } catch (e) {} }
+function sheetIdFrom(v) {
+  const t = String(v || '').trim();
+  const m = /\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/.exec(t);
+  if (m) return m[1];
+  if (/^[A-Za-z0-9_-]{20,}$/.test(t)) return t;
+  return null;
+}
+function relayFrom(v) {
+  let t = String(v || '').trim();
+  if (!t) return null;
+  /* https only: the app is served over https, so an http relay would be
+     blocked as mixed content anyway. localhost is allowed for testing. */
+  if (!/^https:\/\//i.test(t) && !/^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(t)) return null;
+  t = t.replace(/[?&]id=[^&]*/gi, '').replace(/[?&]+$/, '');
+  return t;
+}
+function agoText(ms) {
+  if (!ms) return '';
+  const s2 = Math.max(0, Math.round((Date.now() - ms) / 1000));
+  if (s2 < 90) return 'just now';
+  const m = Math.round(s2 / 60); if (m < 90) return m + ' min ago';
+  const h = Math.round(m / 60); if (h < 36) return h + ' h ago';
+  return Math.round(h / 24) + ' d ago';
+}
 
 const LKEY = 'sbs-xlsx-v1';
 function loadLocal() {
@@ -1078,11 +1118,21 @@ function renderCheckin() {
 
 function renderFiles() {
   const host = $('filebar'); host.innerHTML = '';
+  const src = loadSrc();
+  const wired = !!(src.relay && src.id);
   const box = document.createElement('div'); box.className = 'filebox';
 
+  if (wired) {
+    const ref = document.createElement('button');
+    ref.type = 'button'; ref.className = 'fbtn' + (weeks.length ? ' alt' : ' pri'); ref.id = 'refbtn';
+    ref.textContent = '\u21bb  Refresh from Rok\u2019s sheet';
+    ref.addEventListener('click', doFetchSheet);
+    box.appendChild(ref);
+  }
+
   const pick = document.createElement('button');
-  pick.type = 'button'; pick.className = 'fbtn' + (weeks.length ? '' : ' pri');
-  pick.textContent = weeks.length ? 'Load a different file' : '📄  Choose Rok’s .xlsx';
+  pick.type = 'button'; pick.className = 'fbtn' + (weeks.length || wired ? '' : ' pri');
+  pick.textContent = weeks.length ? 'Load a file instead' : '\ud83d\udcc4  Choose Rok\u2019s .xlsx';
   let inp = document.getElementById('xlsxin');
   if (!inp) {
     inp = document.createElement('input');
@@ -1094,11 +1144,11 @@ function renderFiles() {
     if (f) doImport(f); else stat('No file was chosen.', true);
   };
   pick.addEventListener('click', function () {
-    stat('Opening the file picker…');
+    stat('Opening the file picker\u2026');
     try { inp.value = ''; } catch (e) {}
     if (pickTimer) clearTimeout(pickTimer);
     pickTimer = setTimeout(function () {
-      stat('This app cannot open a file picker. Open the same page in Chrome, or load the file once on your computer — it syncs here automatically.', true);
+      stat('This app cannot open a file picker. Connect Rok\u2019s sheet below instead, or open the same page in Chrome.', true);
     }, 2500);
     inp.click();
   });
@@ -1107,15 +1157,62 @@ function renderFiles() {
   if (weeks.length) {
     const exp = document.createElement('button');
     exp.type = 'button'; exp.className = 'fbtn pri'; exp.id = 'expbtn';
-    exp.textContent = '⤓  Export filled-in .xlsx';
+    exp.textContent = '\u2913  Export filled-in .xlsx';
     exp.addEventListener('click', doExport);
     box.appendChild(exp);
   }
   host.appendChild(box);
 
   const st = document.createElement('p'); st.className = 'fstat'; st.id = 'fstat';
-  st.textContent = wbName ? wbName : 'No file loaded yet';
+  st.textContent = wbName ? (wbName + (wbAt ? ' \u00b7 ' + agoText(wbAt) : '')) : 'No file loaded yet';
   host.appendChild(st);
+
+  /* ---- connect Rok's sheet ---- */
+  const d = document.createElement('details'); d.className = 'imp';
+  const sm = document.createElement('summary');
+  sm.textContent = wired ? 'Rok\u2019s sheet \u2014 connected' : 'Connect Rok\u2019s sheet';
+  d.appendChild(sm);
+  const bd = document.createElement('div'); bd.className = 'impbody';
+
+  const p1 = document.createElement('p');
+  p1.textContent = 'Paste the Google Sheets link Rok shared with you, plus the address of your relay. ' +
+    'The sheet must be set to "Anyone with the link \u2192 Viewer". Both are stored on this phone only.';
+  bd.appendChild(p1);
+
+  function fieldRow(labelText, val, ph) {
+    const wrapEl = document.createElement('div'); wrapEl.className = 'srcrow';
+    const l = document.createElement('label'); l.textContent = labelText;
+    const i = document.createElement('input'); i.type = 'url'; i.value = val || ''; i.placeholder = ph;
+    i.autocapitalize = 'off'; i.autocomplete = 'off'; i.spellcheck = false;
+    wrapEl.appendChild(l); wrapEl.appendChild(i); bd.appendChild(wrapEl);
+    return i;
+  }
+  const iSheet = fieldRow('Google Sheets link', src.url || src.id || '', 'https://docs.google.com/spreadsheets/d/\u2026');
+  const iRelay = fieldRow('Relay address', src.relay || '', 'https://\u2026.workers.dev');
+
+  const go = document.createElement('button'); go.type = 'button'; go.className = 'go';
+  go.textContent = 'Save and fetch now';
+  go.addEventListener('click', async function () {
+    const id = sheetIdFrom(iSheet.value), relay = relayFrom(iRelay.value);
+    if (!id) { stat('That does not look like a Google Sheets link \u2014 it should contain /spreadsheets/d/\u2026', true); return; }
+    if (!relay) { stat('The relay address must start with https:// \u2014 copy it from your Cloudflare worker page.', true); return; }
+    saveSrc({ id: id, relay: relay, url: iSheet.value.trim(), label: src.label || 'Rok\u2019s sheet' });
+    d.open = false; renderFiles();
+    await doFetchSheet();
+  });
+  bd.appendChild(go);
+
+  if (wired) {
+    const cut = document.createElement('button'); cut.type = 'button'; cut.className = 'go ghost';
+    cut.textContent = 'Disconnect';
+    cut.addEventListener('click', function () {
+      saveSrc({}); renderFiles();
+      stat('Disconnected. Your loaded week and logged numbers are untouched.');
+    });
+    bd.appendChild(cut);
+  }
+
+  d.appendChild(bd); host.appendChild(d);
 }
 
 function renderAll() { renderBar(); renderCheckin(); if (view === 'done' && week()) renderDone(); else renderCard(); renderRail(); renderFiles(); }
@@ -1137,40 +1234,83 @@ function readBuf(file) {
 }
 
 let pickTimer = null;
+
+/* Parse a workbook buffer into app state. Throws with a readable message. */
+async function ingest(buf, name, keepLog) {
+  if (!streamsOK()) throw new Error('this browser cannot unzip files \u2014 update Chrome, or try another browser.');
+  const sig = new Uint8Array(buf, 0, 2);
+  if (sig[0] !== 0x50 || sig[1] !== 0x4B) {
+    throw new Error('that is not an .xlsx. In Sheets use File \u2192 Download \u2192 Microsoft Excel (.xlsx) \u2014 not CSV or PDF.');
+  }
+  const map = await unzip(buf);
+  const sl = sheetList(map);
+  const sst = sharedStrings(map);
+  let found = [];
+  sl.forEach(function (sh) {
+    if (!map.get(sh.path)) return;
+    found = found.concat(parseWeeks(readGrid(map, sh.path, sst), sh.name));
+  });
+  if (!found.length) {
+    throw new Error('no training weeks found. The app looks for a cell like "Week 1/4", and under it a row with a body-part heading and "Sets" two columns to its right. Tabs checked: ' +
+      sl.map(function (x) { return x.name; }).join(', ') + '.');
+  }
+  wbB64 = b64FromBuf(buf); wbName = name;
+  sheets = sl; weeks = found; view = 'session';
+  if (!keepLog) log = {};
+  const stillThere = keepLog && pos.w && weeks.some(function (w) { return w.id === pos.w; });
+  if (!stillThere) pos = { w: weeks[weeks.length - 1].id, d: 1, i: 0 };
+  wbAt = Date.now();
+  chkSel = chkDefaultIdx(week());
+  save(); renderAll(); scrollTo(0, 0);
+  return found;
+}
+
+function loadedMsg(found, src) {
+  const nd = found[found.length - 1].days.length;
+  return 'Loaded ' + found.length + ' week' + (found.length > 1 ? 's' : '') + ' \u00b7 ' + nd + '-day split \u00b7 from ' + src;
+}
+
 async function doImport(file) {
   if (pickTimer) { clearTimeout(pickTimer); pickTimer = null; }
-  if (!streamsOK()) { stat('This browser cannot unzip files — update Chrome, or try another browser.', true); return; }
-  stat('Reading ' + (file.name || 'the file') + '…');
+  stat('Reading ' + (file.name || 'the file') + '\u2026');
   try {
-    const buf = await readBuf(file);
-    const sig = new Uint8Array(buf, 0, 2);
-    if (sig[0] !== 0x50 || sig[1] !== 0x4B) {
-      stat('That is not an .xlsx. In Sheets use File \u2192 Download \u2192 Microsoft Excel (.xlsx) \u2014 not CSV or PDF.', true);
-      return;
-    }
-    const map = await unzip(buf);
-    const sl = sheetList(map);
-    const sst = sharedStrings(map);
-    let found = [];
-    sl.forEach(function (s) {
-      if (!map.get(s.path)) return;
-      found = found.concat(parseWeeks(readGrid(map, s.path, sst), s.name));
-    });
-    if (!found.length) {
-      stat('No training weeks found in that file. The app looks for a cell like "Week 1/4", and under it a row with a body-part heading and "Sets" two columns to its right. Tabs checked: ' +
-        sl.map(function (x) { return x.name; }).join(', ') + '.', true);
-      return;
-    }
-    wbB64 = b64FromBuf(buf); wbName = file.name;
-    sheets = sl; weeks = found; log = {}; view = 'session';
-    pos = { w: weeks[weeks.length - 1].id, d: 1, i: 0 };
-    wbAt = Date.now();
-    chkSel = chkDefaultIdx(week());
-    save(); renderAll(); scrollTo(0, 0);
-    const nd = weeks[weeks.length - 1].days.length;
-    stat('Loaded ' + weeks.length + ' week' + (weeks.length > 1 ? 's' : '') + ' · ' + nd + '-day split · from ' + file.name);
+    const found = await ingest(await readBuf(file), file.name, false);
+    stat(loadedMsg(found, file.name));
   } catch (err) {
     stat('Could not read that file: ' + err.message, true);
+  }
+}
+
+/* ---- pull the workbook straight from Rok's Google Sheet, via the relay ---- */
+async function doFetchSheet() {
+  const src = loadSrc();
+  if (!src.relay || !src.id) { stat('Connect Rok\u2019s sheet first \u2014 open "Rok\u2019s sheet" just below.', true); return; }
+  const btn = $('refbtn'), was = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Fetching\u2026'; }
+  stat('Fetching the latest from Rok\u2019s sheet\u2026');
+  try {
+    const u = src.relay + (src.relay.indexOf('?') > -1 ? '&' : '?') +
+      'id=' + encodeURIComponent(src.id) + '&t=' + Date.now();
+    const r = await fetch(u, { cache: 'no-store' });
+    if (!r.ok) {
+      let extra = '';
+      try { const t = await r.text(); if (t && t.length < 300) extra = ' ' + t.trim(); } catch (e) {}
+      throw new Error('the relay answered ' + r.status + '.' + extra);
+    }
+    const buf = await r.arrayBuffer();
+    const found = await ingest(buf, src.label || 'Rok\u2019s sheet', true);
+    stat(loadedMsg(found, 'Rok\u2019s sheet') + ' \u00b7 your logged numbers were kept.');
+  } catch (err) {
+    const off = (typeof navigator !== 'undefined' && navigator.onLine === false);
+    let why = String(err.message || 'something went wrong');
+    if (!/[.!?]$/.test(why)) why += '.';
+    if (/failed to fetch|networkerror|load failed/i.test(why)) {
+      why = 'the relay could not be reached, or it did not send the CORS header. Check the address, and that the worker is deployed.';
+    }
+    stat((off ? 'You are offline, so the sheet could not be refreshed. ' : 'Could not fetch the sheet: ' + why + ' ') +
+      (weeks.length ? 'Your last loaded week is still here.' : ''), true);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = was; }
   }
 }
 

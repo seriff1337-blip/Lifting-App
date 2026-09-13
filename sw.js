@@ -1,6 +1,6 @@
 /* Set by Set — offline cache.
    Bump CACHE when you change any file; old caches are dropped on activate. */
-const CACHE = 'setbyset-v3';
+const CACHE = 'setbyset-v4';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function (e) {
