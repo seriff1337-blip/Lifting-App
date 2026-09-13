@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Set by Set</title>
 <meta name="theme-color" content="#0E141B">
 <meta name="mobile-web-app-capable" content="yes">
@@ -128,6 +133,14 @@ button{font:inherit; color:inherit; cursor:pointer}
 .note{width:100%; background:var(--surface-2); border:1px solid var(--line); border-radius:12px;
   padding:10px 12px; font:inherit; font-size:15px; color:var(--ink); resize:vertical; min-height:44px; outline:none}
 .note:focus{border-color:var(--acc)}
+.coach{background:var(--acc-soft); border:1px solid var(--acc); border-radius:12px;
+  padding:10px 12px; margin:0 0 14px}
+.coach .lbl{display:block; font-size:11px; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--acc); margin-bottom:3px}
+.coach p{margin:0; font-size:15px; line-height:1.4; color:var(--ink); white-space:pre-wrap; word-break:break-word}
+.coach a{color:var(--acc); font-weight:700}
+.notelbl{display:block; font-size:11px; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-3); margin:14px 0 5px}
 .vid{display:inline-block; margin:10px 0 0; font-size:14px; font-weight:600; color:var(--acc)}
 
 .nav{display:grid; grid-template-columns:64px 1fr; gap:10px; margin-top:16px}
@@ -156,6 +169,9 @@ button{font:inherit; color:inherit; cursor:pointer}
 .rl .t{min-width:0}
 .rl .t b{display:block; font-size:14.5px; font-weight:600; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .rl .t i{font-style:normal; font-size:12.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.rl .hasnote{display:inline-block; margin-top:3px; font-size:10px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--acc);
+  background:var(--acc-soft); border-radius:5px; padding:1px 5px}
 .rl .st{width:20px; height:20px; min-width:20px; max-width:20px; min-height:20px; max-height:20px;
   border-radius:50%; border:2px solid var(--line); box-sizing:border-box; justify-self:center; align-self:center; padding:0}
 .rl .st.done{background:var(--ok); border-color:var(--ok)}
@@ -248,6 +264,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .foot{margin-top:18px}
 </style>
 
+</head>
+<body>
 <div class="wrap">
   <div class="bar">
     <div class="bar-top">
@@ -718,6 +736,18 @@ function renderCard() {
   const ref = lastWeekRef(r.e);
   if (ref) { const p = document.createElement('p'); p.className = 'lastwk'; p.innerHTML = 'Last week: <b>' + ref + '</b>'; card.appendChild(p); }
 
+  if (r.n && String(r.n).trim()) {
+    const cn = document.createElement('div'); cn.className = 'coach';
+    const cl = document.createElement('span'); cl.className = 'lbl'; cl.textContent = 'Coach notes';
+    const cp = document.createElement('p');
+    if (/^https?:/i.test(String(r.n).trim())) {
+      const a = document.createElement('a'); a.href = String(r.n).trim();
+      a.target = '_blank'; a.rel = 'noopener'; a.textContent = '\u25B6 Watch the video from Rok';
+      cp.appendChild(a);
+    } else { cp.textContent = String(r.n); }
+    cn.appendChild(cl); cn.appendChild(cp); card.appendChild(cn);
+  }
+
   const fs = document.createElement('div'); fs.className = 'fields';
   fs.appendChild(field('Sets', e.st, 1, function (v) { e.st = parseVal(v); save(); renderRail(); renderBar(); }, differs(e.st, r.st)));
   fs.appendChild(field('Reps', e.rp, 1, function (v) { e.rp = parseVal(v); save(); renderRail(); }, differs(e.rp, r.rp)));
@@ -744,17 +774,14 @@ function renderCard() {
   }
   sr.appendChild(sl); sr.appendChild(tk); card.appendChild(sr);
 
-  const nt = document.createElement('textarea'); nt.className = 'note'; nt.placeholder = 'Note for Rok…';
+  const nlab = document.createElement('span'); nlab.className = 'notelbl';
+  nlab.textContent = 'My note \u2192 goes in the Comment column';
+  card.appendChild(nlab);
+  const nt = document.createElement('textarea'); nt.className = 'note'; nt.placeholder = 'How did it feel? Anything Rok should know\u2026';
   nt.value = e.note || ''; nt.setAttribute('aria-label', 'Note');
   nt.addEventListener('input', function () { e.note = nt.value; save(); });
   card.appendChild(nt);
 
-  if (r.n && /^https?:/.test(r.n)) {
-    const a = document.createElement('a'); a.className = 'vid'; a.href = r.n; a.target = '_blank'; a.rel = 'noopener';
-    a.textContent = '▶ Video from Rok'; card.appendChild(a);
-  } else if (r.n) {
-    const p = document.createElement('p'); p.className = 'lastwk'; p.style.marginTop = '10px'; p.textContent = 'Rok: ' + r.n; card.appendChild(p);
-  }
 
   const nav = document.createElement('div'); nav.className = 'nav';
   const prev = document.createElement('button'); prev.type = 'button'; prev.textContent = '←'; prev.disabled = pos.i === 0;
@@ -836,6 +863,11 @@ function renderRail() {
       '<span class="st ' + (st === 'done' ? 'done' : st === 'part' ? 'part' : '') + '"></span>';
     b.querySelector('b').textContent = r.e;
     b.querySelector('i').textContent = fmt(e.st) + '×' + fmt(e.rp) + ' @ ' + fmt(e.w) + (num(e.r) ? '  ·  RPE ' + fmt(e.r) : '');
+    if (r.n && String(r.n).trim()) {
+      const flag = document.createElement('span'); flag.className = 'hasnote';
+      flag.textContent = 'note'; flag.title = String(r.n);
+      b.querySelector('.t').appendChild(flag);
+    }
     b.addEventListener('click', function () { pos.i = i; save(); renderAll(); scrollTo(0, 0); });
     host.appendChild(b);
   });
@@ -953,6 +985,11 @@ function buildEdits() {
       if (p[1] === null || p[1] === undefined || p[1] === '') return;
       list.push({ r: r.sr, c: p[0], v: p[1] });
     });
+    const mine = (e.note || '').trim();
+    if (mine) {
+      const coach = (typeof r.n === 'string' ? r.n : '').trim();
+      list.push({ r: r.sr, c: r.sc + 9, v: coach ? coach + '  |  ' + mine : mine });
+    }
   });
   return byTab;
 }
@@ -1000,4 +1037,5 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   });
 }
 </script>
-
+</body>
+</html>
